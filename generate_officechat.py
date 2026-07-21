@@ -162,7 +162,7 @@ def build_setup():
     w("    InstallChat\n")
     for idx in range(len(chunks)): w("    InstallGame%d\n"%(idx+1))
     w('    MsgBox U("%s") & vbCr & U("%s"), vbInformation, "OfficeChat"\n'
-      %(codes("OfficeChat מוכן!  :)"),codes('נסה במסמך:  בוא נשחק')))
+      %(codes("OfficeChat מוכן!  :)"),codes('נסה בוורד:  היי צאט')))
     w("End Sub\n\n")
 
     w("Private Sub InstallChat()\n")
@@ -268,7 +268,7 @@ def build_vbs(install=True):
         for key in sorted(entries.keys(), key=lambda k:(len(k),k)):
             raw,status=entries[key]; w('AddG "%s", "%s", "%s"\n'%(key,raw,status))
         w("If createdWord Then\n    word.NormalTemplate.Saved = True\n    word.Quit\nEnd If\n")
-        w('MsgBox U("%s") & vbCr & U("%s"), 64, "OfficeChat"\n'%(codes("OfficeChat מוכן!  :)"),codes("נסה בוורד:  בוא נשחק")))
+        w('MsgBox U("%s") & vbCr & U("%s"), 64, "OfficeChat"\n'%(codes("OfficeChat מוכן!  :)"),codes("נסה בוורד:  היי צאט")))
     else:
         w("Sub DelE(nm)\n    On Error Resume Next\n    word.AutoCorrect.Entries(nm).Delete\n    On Error GoTo 0\nEnd Sub\n")
         for nm,_ in CHAT: w("DelE %s\n"%vstr(nm))

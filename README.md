@@ -1,129 +1,125 @@
 # 🎭 OfficeChat
 
-**A fake "AI chatbot" and an unbeatable Tic-Tac-Toe game that run entirely inside
-Microsoft Word — using nothing but AutoCorrect. No internet, no add-ins, no macros
-required at runtime.**
+> 🇬🇧 English version: [README.en.md](README.en.md)
 
-OfficeChat is a **prank**. To an audience it looks like Word is talking back to you
-and playing games. In reality, every "reply" is just an AutoCorrect replacement that
-Word swaps in as you type. It even works on a fully offline / locked-down machine.
+**צ'אט "AI" מזויף ומשחק איקס־עיגול שאי אפשר לנצח — שרצים כולם בתוך מיקרוסופט וורד,
+באמצעות תיקון שגיאות אוטומטי בלבד. בלי אינטרנט, בלי תוספות, בלי מאקרו בזמן ריצה.**
 
-> 🤫 The whole trick is that it's *not* AI. If you're performing it, don't tell your
-> audience how it works — none of the built-in responses give it away.
+OfficeChat היא **מתיחה**. לצופים זה נראה כאילו וורד עונה לך ומשחק איתך. במציאות, כל
+"תשובה" היא סתם החלפת טקסט שוורד מבצע תוך כדי הקלדה. זה עובד גם על מחשב מנותק לגמרי
+או נעול.
 
----
-
-## ✨ Features
-
-- 💬 **30+ chat responses** on all sorts of topics — greetings, jokes, small talk —
-  all phrased to sound like a real assistant.
-- 🎮 **Full Tic-Tac-Toe** against a **perfect (unbeatable) computer** — all 1,120
-  reachable board states are pre-computed. Best you can do is a draw.
-- 🌐 **100% offline & local.** Works with network/macros blocked.
-- ↩️ **Clean uninstall** that restores Word exactly.
-- 🖱️ **One-click installer** (`.vbs`) or manual import (`.bas`).
+> 🤫 כל הפואנטה היא שזה *לא* AI. אם אתה מציג את זה — אל תגלה לצופים איך זה עובד.
+> אף תגובה מובנית לא מסגירה את הטריק.
 
 ---
 
-## 🚀 Install
+## ✨ תכונות
 
-### Option A — One click (easiest)
-1. Download the repo (**Code → Download ZIP**) and unzip.
-2. Double-click **`easy-install/Install-OfficeChat.vbs`**.
-3. A popup says *"OfficeChat מוכן!"* — you're done.
-
-> The script automates Word to add the entries. Windows or antivirus may ask you to
-> confirm running a script — that's expected. If scripts are blocked on your machine,
-> use Option B.
-
-### Option B — Manual import (most reliable)
-1. Open Word → press **Alt + F11** (VBA editor).
-2. **File → Import File…** → choose **`src/OfficeChat_Setup.bas`**.
-3. Press **F5** → run **`OfficeChat_Install`**.
-
-> ⚠️ **Import** the `.bas` file — do **not** copy-paste it into the code window
-> (the first `Attribute VB_Name` line will cause a *Syntax error*).
+- 💬 **יותר מ-20 תגובות שיחה** על שלל נושאים — ברכות, בדיחות, שיחת חולין — כולן
+  מנוסחות כדי להישמע כמו עוזר אמיתי.
+- 🎮 **איקס־עיגול מלא** מול מחשב **מושלם (שאי אפשר לנצח)** — כל 1,120 מצבי הלוח
+  האפשריים מחושבים מראש. הכי טוב שתשיג זה תיקו.
+- 🌐 **100% מקומי ולא מקוון.** עובד גם כשהרשת/מאקרו חסומים.
+- ↩️ **הסרה נקייה** שמחזירה את וורד בדיוק לקדמותו.
+- 🖱️ **התקנה בלחיצה אחת** (`.vbs`) או ייבוא ידני (`.bas`).
 
 ---
 
-## 🕹️ Usage (all triggers are in Hebrew)
+## 🚀 התקנה
 
-Type the phrase, then a **space**, and Word replaces it.
+### דרך א' — לחיצה אחת (הכי קל)
+1. הורד את הריפו (**Code → Download ZIP**) וחלץ.
+2. לחיצה כפולה על **`easy-install/Install-OfficeChat.vbs`**.
+3. תופיע הודעה *"OfficeChat מוכן!"* — סיימת.
 
-**Chat** — try:
-- `היי צאט` — a greeting
-- `צאט ספר בדיחה` — a joke
+> הסקריפט מפעיל את וורד ומוסיף את ההחלפות. ייתכן ש-Windows או האנטי-וירוס יבקשו
+> אישור להריץ סקריפט — זה תקין. אם סקריפטים חסומים במחשב שלך, השתמש בדרך ב'.
+
+### דרך ב' — ייבוא ידני (הכי אמין)
+1. פתח את וורד → לחץ **Alt + F11** (עורך VBA).
+2. **File → Import File…** → בחר **`src/OfficeChat_Setup.bas`**.
+3. לחץ **F5** → הרץ **`OfficeChat_Install`**.
+
+> ⚠️ **מייבאים** את קובץ ה-`.bas` — **לא** מדביקים אותו בחלון הקוד (השורה הראשונה
+> `Attribute VB_Name` תגרום ל-*Syntax error*).
+
+---
+
+## 🕹️ שימוש (כל הטריגרים בעברית)
+
+כותבים את הביטוי ואז **רווח**, ווורד מחליף אותו.
+
+**שיחה** — נסה:
+- `היי צאט` — ברכה
+- `צאט ספר בדיחה` — בדיחה
 - `צאט מה משמעות החיים`
 - `צאט משעמם לי`
 
-(Full list: [`docs/replacements.txt`](docs/replacements.txt))
+(הרשימה המלאה: [`docs/replacements.txt`](docs/replacements.txt))
 
-**Tic-Tac-Toe:**
-- Type **`בוא נשחק`** → a board appears. You are **X**, the computer is **O**.
-- To play a move, type your **secret code**: `תתת` + the digits of the cells you've
-  chosen so far.
-  - First move to cell 5: `תתת5`
-  - then cell 9: `תתת59`
-  - then cell 3: `תתת593`
-- The board shows numbers `1–9` in the empty cells, so you always know what to append.
+**איקס־עיגול:**
+- כתוב **`בוא נשחק`** → מופיע לוח. אתה **X**, המחשב **O**.
+- כדי לשחק מהלך, הקלד את **הקוד הסודי שלך**: `תתת` + ספרות המשבצות שבחרת עד עכשיו.
+  - מהלך ראשון למשבצת 5: `תתת5`
+  - אחר כך משבצת 9: `תתת59`
+  - אחר כך משבצת 3: `תתת593`
+- הלוח מציג את המספרים `1–9` במשבצות הפנויות, כך שתמיד תדע מה להוסיף.
 
-Your audience just sees the board update and the "AI" saying *תורך!* / *ניצחתי!*.
-
----
-
-## 🧠 How it works
-
-Word's **AutoCorrect** replaces text as you type. OfficeChat registers a large set of
-replacements: fixed phrases for chat, and one entry per Tic-Tac-Toe state. Because
-AutoCorrect is stateless, the *code you type* (`תתת` + your moves) encodes the entire
-game so far, and the matching entry supplies the next board.
-
-Two non-obvious quirks this project works around:
-
-1. **AutoCorrect lists are per-language.** Entries added via automation land in one
-   language's list. A Latin trigger like `ttt` typed in an English run is matched
-   against the *English* list and never fires, while a Hebrew trigger matches the
-   Hebrew list. That's why the game trigger is Hebrew (`תתת`).
-2. **Loop prevention.** Word won't apply a replacement whose result contains the
-   trigger itself, so no board text repeats its own code.
-
-Boards are rendered with a soft line break (so they stack into a grid) and wrapped in
-Unicode LTR marks (so the digits don't reverse inside a right-to-left document).
+הצופים רואים רק את הלוח מתעדכן ואת ה"AI" אומר *תורך!* / *ניצחתי!*.
 
 ---
 
-## 🧹 Uninstall
+## 🧠 איך זה עובד
 
-- **One click:** double-click `easy-install/Uninstall-OfficeChat.vbs`.
-- **Manual:** import `src/OfficeChat_Remove.bas` and run `OfficeChat_Uninstall`.
+**תיקון השגיאות** של וורד מחליף טקסט תוך כדי הקלדה. OfficeChat רושם אוסף גדול של
+החלפות: ביטויים קבועים לשיחה, וְרשומה לכל מצב במשחק. מכיוון שתיקון השגיאות חסר זיכרון,
+**הקוד שאתה מקליד** (`תתת` + המהלכים) מקודד את כל המשחק עד כה, והרשומה המתאימה מספקת
+את הלוח הבא.
 
-Both remove every OfficeChat entry (plus a safety sweep of anything left over) and
-leave your AutoCorrect exactly as it was.
+שני עקרונות לא־מובנים־מאליהם שהפרויקט מתמודד איתם:
+
+1. **רשימות תיקון־שגיאות הן פר־שפה.** רשומות שנוספות דרך אוטומציה נכנסות לרשימה של
+   שפה אחת. טריגר לטיני כמו `ttt` שמוקלד בהקשר אנגלי נבדק מול הרשימה *האנגלית* ולעולם
+   לא נורה, בעוד טריגר עברי נבדק מול הרשימה העברית. לכן טריגר המשחק בעברית (`תתת`).
+2. **מניעת לולאה.** וורד לא מחיל החלפה שהתוצאה שלה מכילה את הטריגר עצמו, ולכן שום
+   טקסט של לוח לא חוזר על הקוד שלו.
+
+הלוחות מוצגים עם מעבר־שורה רך (כדי שיצטברו לרשת) ועטופים בסימני כיווניות של יוניקוד
+(כדי שהמספרים לא יתהפכו בתוך מסמך מימין־לשמאל).
 
 ---
 
-## 🛠️ Development
+## 🧹 הסרה
 
-Everything is generated by one script:
+- **לחיצה אחת:** לחיצה כפולה על `easy-install/Uninstall-OfficeChat.vbs`.
+- **ידני:** ייבא את `src/OfficeChat_Remove.bas` והרץ `OfficeChat_Uninstall`.
+
+שתי הדרכים מסירות כל רשומה של OfficeChat (כולל סריקת ביטחון לכל שארית) ומשאירות את
+תיקון השגיאות שלך בדיוק כפי שהיה.
+
+---
+
+## 🛠️ פיתוח
+
+הכל נוצר על ידי סקריפט אחד:
 
 ```bash
 python3 generate_officechat.py
 ```
 
-Edit the `CHAT` list inside it to add or change responses, then re-run to regenerate
-the `.bas` and `.vbs` files. The Tic-Tac-Toe tree (perfect play via minimax) and all
-Hebrew text (encoded as `ChrW` code points so the source stays pure ASCII) are built
-automatically.
+ערוך את רשימת `CHAT` שבתוכו כדי להוסיף או לשנות תגובות, והרץ מחדש כדי לייצר את קבצי
+ה-`.bas` וה-`.vbs`. עץ המשחק (משחק מושלם דרך מינימקס) וכל הטקסט העברי (מקודד כקודי
+תווים של `ChrW` כדי שהמקור יישאר ASCII נקי) נבנים אוטומטית.
 
 ---
 
-## ⚠️ Notes
+## ⚠️ הערות
 
-- OfficeChat only edits your **AutoCorrect** entries; the uninstaller reverts them.
-- Column alignment depends on the document font — a monospace font (e.g. Consolas)
-  lines the board up best.
-- This is a toy/prank. Use it to have fun. 🙂
+- OfficeChat עורך רק את רשומות **תיקון השגיאות** שלך; ההסרה מחזירה אותן.
+- יישור העמודות תלוי בפונט של המסמך — פונט רוחב־קבוע (כמו Consolas) מיישר הכי טוב.
+- זה צעצוע/מתיחה. תיהנו. 🙂
 
-## 📄 License
+## 📄 רישיון
 
-MIT — see [LICENSE](LICENSE).
+MIT — ראה [LICENSE](LICENSE).

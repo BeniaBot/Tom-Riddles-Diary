@@ -75,7 +75,7 @@ Public Sub OfficeChat_Install()
     InstallGame6
     InstallGame7
     InstallGame8
-    MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1502 1505 1502 1498 58 32 32 1489 1493 1488 32 1504 1513 1495 1511"), vbInformation, "OfficeChat"
+    MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), vbInformation, "OfficeChat"
 End Sub
 
 Private Sub InstallChat()

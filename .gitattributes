@@ -1,0 +1,6 @@
+# Normalize line endings; force CRLF for Windows-consumed files
+* text=auto
+*.bas text eol=crlf
+*.vbs text eol=crlf
+*.md text eol=lf
+*.py text eol=lf
