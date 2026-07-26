@@ -1,6 +1,6 @@
-# 🎭 OfficeChat — מדריך למפעיל (זו מתיחה!)
+# 🎭 היומן של תום רידל — מדריך למפעיל (זו מתיחה!)
 
-> ⚠️ **סוד:** OfficeChat נראה כמו צ'אט AI אמיתי, אבל הוא רץ כולו על **תיקון־שגיאות
+> ⚠️ **סוד:** תום רידל נראה כמו צ'אט AI אמיתי, אבל הוא רץ כולו על **תיקון־שגיאות
 > אוטומטי** של וורד. **אסור לחשוף זאת לצופים.** אף תגובה אינה מסגירה את המנגנון —
 > שמור על הקסם.
 
@@ -10,8 +10,8 @@
 
 > מייבאים את הקובץ — לא מדביקים! (הדבקה גורמת ל־`Syntax error`.)
 
-1. וורד → **Alt + F11** → **File → Import File…** → `OfficeChat_Setup.bas` → **Open**.
-2. **F5** → `OfficeChat_Install` → **Run**.
+1. וורד → **Alt + F11** → **File → Import File…** → `TomRiddle_Setup.bas` → **Open**.
+2. **F5** → `TomRiddle_Install` → **Run**.
 3. בהודעה שקופצת ודא: **`Game entry exists: YES`**.
 
 ---
@@ -60,11 +60,11 @@
 ---
 
 ## 🧹 הסרה
-**Alt + F11** → **File → Import File…** → `OfficeChat_Remove.bas` → **F5** →
-`OfficeChat_Uninstall`. מנקה הכל, כולל רשת ביטחון לכל רשומה של המשחק.
+**Alt + F11** → **File → Import File…** → `TomRiddle_Remove.bas` → **F5** →
+`TomRiddle_Uninstall`. מנקה הכל, כולל רשת ביטחון לכל רשומה של המשחק.
 
 ## 🩺 אם המשחק לא נפתח
-ייבא והרץ `OfficeChat_Diag.bas` (F5 → `OfficeChat_Diag`) — הוא מראה כמה החלפות
+ייבא והרץ `TomRiddle_Diag.bas` (F5 → `TomRiddle_Diag`) — הוא מראה כמה החלפות
 קיימות ואת ערך רשומת המשחק. צלם ושלח.
 
 ## 🧠 למה טריגר בעברית ולא "ttt"?
@@ -73,4 +73,4 @@
 זה שנורה — בדיוק כמו תגובות השיחה.
 
 ## 🔧 התאמה אישית
-עורכים את `CHAT` בקובץ `generate_officechat.py` ומריצים `python3 generate_officechat.py`.
+עורכים את `CHAT` בקובץ `generate_tomriddle.py` ומריצים `python3 generate_tomriddle.py`.

@@ -1,4 +1,4 @@
-' Install-OfficeChat.vbs  -  double-click to install (no VBA editor needed).
+' Install-TomRiddle.vbs  -  double-click to install (no VBA editor needed).
 Option Explicit
 Dim word, createdWord
 Function U(codes)
@@ -22,7 +22,7 @@ If word Is Nothing Then
 End If
 On Error GoTo 0
 If word Is Nothing Then
-    MsgBox "Microsoft Word not found.", 16, "OfficeChat"
+    MsgBox "Microsoft Word not found.", 16, "Tom Riddle"
     WScript.Quit
 End If
 If createdWord Then word.Visible = False
@@ -1211,4 +1211,4 @@ If createdWord Then
     word.NormalTemplate.Saved = True
     word.Quit
 End If
-MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), 64, "OfficeChat"
+MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), 64, "Tom Riddle"

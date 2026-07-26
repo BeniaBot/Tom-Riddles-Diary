@@ -1,5 +1,5 @@
-Attribute VB_Name = "OfficeChat_Remove"
-' IMPORT this file, then F5 -> OfficeChat_Uninstall.
+Attribute VB_Name = "TomRiddle_Remove"
+' IMPORT this file, then F5 -> TomRiddle_Uninstall.
 Option Explicit
 
 Private Function U(ByVal codes As String) As String
@@ -26,7 +26,7 @@ Private Sub DelE(ByVal nm As String)
     On Error GoTo 0
 End Sub
 
-Public Sub OfficeChat_Uninstall()
+Public Sub TomRiddle_Uninstall()
     Dim before As Long, after As Long
     before = Application.AutoCorrect.Entries.Count
     RemoveChat
@@ -47,7 +47,7 @@ Public Sub OfficeChat_Uninstall()
         End If
     Next i
     after = Application.AutoCorrect.Entries.Count
-    MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1492 1493 1505 1512 46") & vbCr & U("1504 1502 1495 1511 1493 32") & (before - after) & U("32 1492 1495 1500 1508 1493 1514 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), vbInformation, "OfficeChat"
+    MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1492 1493 1505 1512 46") & vbCr & U("1504 1502 1495 1511 1493 32") & (before - after) & U("32 1492 1495 1500 1508 1493 1514 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), vbInformation, "Tom Riddle"
 End Sub
 
 Private Sub RemoveChat()

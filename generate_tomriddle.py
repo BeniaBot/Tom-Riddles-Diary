@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-OfficeChat generator - Hebrew-trigger + prank-safe edition.
+Tom Riddle generator - Hebrew-trigger + prank-safe edition.
 Fixes:
  (1) game trigger is HEBREW ("תתת") so it matches in the same AutoCorrect
      language list as the (working) Hebrew chat triggers.
@@ -122,10 +122,10 @@ CHUNK=140
 
 def build_setup():
     o=io.StringIO(); w=o.write
-    w('Attribute VB_Name = "OfficeChat_Setup"\n')
+    w('Attribute VB_Name = "TomRiddle_Setup"\n')
     w("' ===================================================================\n")
-    w("'  OfficeChat - Setup.  IMPORT this file (File > Import File), then F5\n")
-    w("'  -> OfficeChat_Install.  Do NOT copy-paste into the code window.\n")
+    w("'  Tom Riddle - Setup.  IMPORT this file (File > Import File), then F5\n")
+    w("'  -> TomRiddle_Install.  Do NOT copy-paste into the code window.\n")
     w("' ===================================================================\n")
     w("Option Explicit\n\n")
     w(U_FUNC); w("\n")
@@ -158,11 +158,11 @@ def build_setup():
     keys=sorted(entries.keys(), key=lambda k:(len(k),k))
     chunks=[keys[i:i+CHUNK] for i in range(0,len(keys),CHUNK)]
 
-    w("Public Sub OfficeChat_Install()\n")
+    w("Public Sub TomRiddle_Install()\n")
     w("    InstallChat\n")
     for idx in range(len(chunks)): w("    InstallGame%d\n"%(idx+1))
-    w('    MsgBox U("%s") & vbCr & U("%s"), vbInformation, "OfficeChat"\n'
-      %(codes("OfficeChat מוכן!  :)"),codes('נסה בוורד:  היי צאט')))
+    w('    MsgBox U("%s") & vbCr & U("%s"), vbInformation, "Tom Riddle"\n'
+      %(codes("תום רידל מוכן!  :)"),codes('נסה בוורד:  היי צאט')))
     w("End Sub\n\n")
 
     w("Private Sub InstallChat()\n")
@@ -182,15 +182,15 @@ def build_setup():
 
 def build_remove():
     o=io.StringIO(); w=o.write
-    w('Attribute VB_Name = "OfficeChat_Remove"\n')
-    w("' IMPORT this file, then F5 -> OfficeChat_Uninstall.\n")
+    w('Attribute VB_Name = "TomRiddle_Remove"\n')
+    w("' IMPORT this file, then F5 -> TomRiddle_Uninstall.\n")
     w("Option Explicit\n\n")
     w(U_FUNC); w("\n")
     w("Private Sub DelE(ByVal nm As String)\n")
     w("    On Error Resume Next\n    Application.AutoCorrect.Entries(nm).Delete\n    On Error GoTo 0\nEnd Sub\n\n")
     keys=sorted(entries.keys(), key=lambda k:(len(k),k))
     chunks=[keys[i:i+CHUNK] for i in range(0,len(keys),CHUNK)]
-    w("Public Sub OfficeChat_Uninstall()\n")
+    w("Public Sub TomRiddle_Uninstall()\n")
     w("    Dim before As Long, after As Long\n    before = Application.AutoCorrect.Entries.Count\n")
     w("    RemoveChat\n")
     for idx in range(len(chunks)): w("    RemoveGame%d\n"%(idx+1))
@@ -201,8 +201,8 @@ def build_remove():
     w("        If Left(Application.AutoCorrect.Entries(i).Name, 3) = p3 Then\n")
     w("            Application.AutoCorrect.Entries(i).Delete\n        End If\n    Next i\n")
     w("    after = Application.AutoCorrect.Entries.Count\n")
-    w('    MsgBox U("%s") & vbCr & U("%s") & (before - after) & U("%s"), vbInformation, "OfficeChat"\n'
-      %(codes("OfficeChat הוסר."),codes("נמחקו "),codes(" החלפות. וורד חזר לקדמותו.")))
+    w('    MsgBox U("%s") & vbCr & U("%s") & (before - after) & U("%s"), vbInformation, "Tom Riddle"\n'
+      %(codes("תום רידל הוסר."),codes("נמחקו "),codes(" החלפות. וורד חזר לקדמותו.")))
     w("End Sub\n\n")
     w("Private Sub RemoveChat()\n")
     for nm,_ in CHAT: w("    DelE %s\n"%vstr(nm))
@@ -217,9 +217,9 @@ def build_remove():
 
 def build_diag():
     o=io.StringIO(); w=o.write
-    w('Attribute VB_Name = "OfficeChat_Diag"\nOption Explicit\n\n')
+    w('Attribute VB_Name = "TomRiddle_Diag"\nOption Explicit\n\n')
     w(U_FUNC); w("\n")
-    w("Public Sub OfficeChat_Diag()\n")
+    w("Public Sub TomRiddle_Diag()\n")
     w("    Dim n As Long, msg As String, v As String, e As Object\n")
     w("    n = Application.AutoCorrect.Entries.Count\n")
     w('    msg = "Total AutoCorrect entries: " & n & vbCrLf & vbCrLf\n')
@@ -228,14 +228,14 @@ def build_diag():
     w("    On Error GoTo 0\n")
     w("    If Not e Is Nothing Then v = e.Value\n")
     w('    msg = msg & "Game entry value:" & vbCrLf & v\n')
-    w('    MsgBox msg, vbInformation, "OfficeChat Diagnostics"\n')
+    w('    MsgBox msg, vbInformation, "Tom Riddle Diagnostics"\n')
     w("End Sub\n")
     return o.getvalue()
 
 def build_vbs(install=True):
     o=io.StringIO(); w=o.write
     name = "Install" if install else "Uninstall"
-    w("' %s-OfficeChat.vbs  -  double-click to %s (no VBA editor needed).\n"%(name, name.lower()))
+    w("' %s-TomRiddle.vbs  -  double-click to %s (no VBA editor needed).\n"%(name, name.lower()))
     w("Option Explicit\n")
     w("Dim word, createdWord\n")
     w("Function U(codes)\n    Dim parts, i, s\n    s = \"\"\n")
@@ -245,7 +245,7 @@ def build_vbs(install=True):
     w("On Error Resume Next\nSet word = GetObject(, \"Word.Application\")\n")
     w("If word Is Nothing Then\n    Set word = CreateObject(\"Word.Application\")\n    createdWord = True\nEnd If\n")
     w("On Error GoTo 0\n")
-    w("If word Is Nothing Then\n    MsgBox \"Microsoft Word not found.\", 16, \"OfficeChat\"\n    WScript.Quit\nEnd If\n")
+    w("If word Is Nothing Then\n    MsgBox \"Microsoft Word not found.\", 16, \"Tom Riddle\"\n    WScript.Quit\nEnd If\n")
     w("If createdWord Then word.Visible = False\n")
     if install:
         w("Function CellCh(raw, i)\n    Dim ch\n    ch = Mid(raw, i, 1)\n")
@@ -268,7 +268,7 @@ def build_vbs(install=True):
         for key in sorted(entries.keys(), key=lambda k:(len(k),k)):
             raw,status=entries[key]; w('AddG "%s", "%s", "%s"\n'%(key,raw,status))
         w("If createdWord Then\n    word.NormalTemplate.Saved = True\n    word.Quit\nEnd If\n")
-        w('MsgBox U("%s") & vbCr & U("%s"), 64, "OfficeChat"\n'%(codes("OfficeChat מוכן!  :)"),codes("נסה בוורד:  היי צאט")))
+        w('MsgBox U("%s") & vbCr & U("%s"), 64, "Tom Riddle"\n'%(codes("תום רידל מוכן!  :)"),codes("נסה בוורד:  היי צאט")))
     else:
         w("Sub DelE(nm)\n    On Error Resume Next\n    word.AutoCorrect.Entries(nm).Delete\n    On Error GoTo 0\nEnd Sub\n")
         for nm,_ in CHAT: w("DelE %s\n"%vstr(nm))
@@ -279,15 +279,15 @@ def build_vbs(install=True):
         w("For i = word.AutoCorrect.Entries.Count To 1 Step -1\n")
         w("    If Left(word.AutoCorrect.Entries(i).Name, 3) = p3 Then\n        word.AutoCorrect.Entries(i).Delete\n    End If\nNext\n")
         w("If createdWord Then\n    word.NormalTemplate.Saved = True\n    word.Quit\nEnd If\n")
-        w('MsgBox U("%s"), 64, "OfficeChat"\n'%codes("OfficeChat הוסר. וורד חזר לקדמותו."))
+        w('MsgBox U("%s"), 64, "Tom Riddle"\n'%codes("תום רידל הוסר. וורד חזר לקדמותו."))
     return o.getvalue()
 
 setup=build_setup(); remove=build_remove(); diag=build_diag()
-open("OfficeChat_Setup.bas","w",encoding="ascii").write(setup)
-open("OfficeChat_Remove.bas","w",encoding="ascii").write(remove)
-open("OfficeChat_Diag.bas","w",encoding="ascii").write(diag)
-open("Install-OfficeChat.vbs","w",encoding="ascii").write(build_vbs(True))
-open("Uninstall-OfficeChat.vbs","w",encoding="ascii").write(build_vbs(False))
+open("TomRiddle_Setup.bas","w",encoding="ascii").write(setup)
+open("TomRiddle_Remove.bas","w",encoding="ascii").write(remove)
+open("TomRiddle_Diag.bas","w",encoding="ascii").write(diag)
+open("Install-TomRiddle.vbs","w",encoding="ascii").write(build_vbs(True))
+open("Uninstall-TomRiddle.vbs","w",encoding="ascii").write(build_vbs(False))
 
 # replacement list (UTF-8) - presenter reference only
 def cell(raw,i):
@@ -296,8 +296,8 @@ def bl(raw,status):
     b="%s|%s|%s / %s|%s|%s / %s|%s|%s"%tuple(cell(raw,i) for i in range(1,10))
     s={'play':P_PLAY,'lose':P_LOSE,'draw':P_DRAW,'win':P_WIN}[status]
     return "%s  %s"%(b,s)
-with open("officechat_all_replacements.txt","w",encoding="utf-8") as f:
-    f.write("OfficeChat - רשימת החלפות (לעיני המפעיל בלבד!)\n"+"="*56+"\n")
+with open("tomriddle_all_replacements.txt","w",encoding="utf-8") as f:
+    f.write("תום רידל - רשימת החלפות (לעיני המפעיל בלבד!)\n"+"="*56+"\n")
     f.write('טריגר המשחק: "תתת" + ספרות (למשל תתת, תתת5, תתת59...).\n')
     f.write('"בוא נשחק" פותח לוח ריק. "/" = מעבר שורה בלוח.\n'+"="*56+"\n\n")
     f.write("--- א. שיחה ---\n\n")
@@ -309,5 +309,5 @@ with open("officechat_all_replacements.txt","w",encoding="utf-8") as f:
         f.write("%-10s ->  %s\n"%(trig,bl(raw,status)))
 
 print("game states:",len(entries),"| chat:",len(CHAT),"| dropped:",_DROPPED)
-for fn in ("OfficeChat_Setup.bas","OfficeChat_Remove.bas","OfficeChat_Diag.bas"):
+for fn in ("TomRiddle_Setup.bas","TomRiddle_Remove.bas","TomRiddle_Diag.bas"):
     open(fn,encoding="ascii").read(); print("  %-24s %6d bytes ASCII-OK"%(fn,len(open(fn,encoding='ascii').read().encode('ascii'))))

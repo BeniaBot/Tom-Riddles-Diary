@@ -1,4 +1,4 @@
-' Uninstall-OfficeChat.vbs  -  double-click to uninstall (no VBA editor needed).
+' Uninstall-TomRiddle.vbs  -  double-click to uninstall (no VBA editor needed).
 Option Explicit
 Dim word, createdWord
 Function U(codes)
@@ -22,7 +22,7 @@ If word Is Nothing Then
 End If
 On Error GoTo 0
 If word Is Nothing Then
-    MsgBox "Microsoft Word not found.", 16, "OfficeChat"
+    MsgBox "Microsoft Word not found.", 16, "Tom Riddle"
     WScript.Quit
 End If
 If createdWord Then word.Visible = False
@@ -1186,4 +1186,4 @@ If createdWord Then
     word.NormalTemplate.Saved = True
     word.Quit
 End If
-MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1492 1493 1505 1512 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), 64, "OfficeChat"
+MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1492 1493 1505 1512 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), 64, "Tom Riddle"

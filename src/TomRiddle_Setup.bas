@@ -1,7 +1,7 @@
-Attribute VB_Name = "OfficeChat_Setup"
+Attribute VB_Name = "TomRiddle_Setup"
 ' ===================================================================
-'  OfficeChat - Setup.  IMPORT this file (File > Import File), then F5
-'  -> OfficeChat_Install.  Do NOT copy-paste into the code window.
+'  Tom Riddle - Setup.  IMPORT this file (File > Import File), then F5
+'  -> TomRiddle_Install.  Do NOT copy-paste into the code window.
 ' ===================================================================
 Option Explicit
 
@@ -65,7 +65,7 @@ Private Sub G(ByVal key As String, ByVal raw As String, ByVal status As String)
     AddPlain U("1514 1514 1514") & key, BoardText(raw, status)
 End Sub
 
-Public Sub OfficeChat_Install()
+Public Sub TomRiddle_Install()
     InstallChat
     InstallGame1
     InstallGame2
@@ -75,7 +75,7 @@ Public Sub OfficeChat_Install()
     InstallGame6
     InstallGame7
     InstallGame8
-    MsgBox U("79 102 102 105 99 101 67 104 97 116 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), vbInformation, "OfficeChat"
+    MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1502 1493 1499 1503 33 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), vbInformation, "Tom Riddle"
 End Sub
 
 Private Sub InstallChat()

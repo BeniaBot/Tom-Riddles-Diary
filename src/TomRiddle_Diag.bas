@@ -1,4 +1,4 @@
-Attribute VB_Name = "OfficeChat_Diag"
+Attribute VB_Name = "TomRiddle_Diag"
 Option Explicit
 
 Private Function U(ByVal codes As String) As String
@@ -19,7 +19,7 @@ Private Function U(ByVal codes As String) As String
     U = s
 End Function
 
-Public Sub OfficeChat_Diag()
+Public Sub TomRiddle_Diag()
     Dim n As Long, msg As String, v As String, e As Object
     n = Application.AutoCorrect.Entries.Count
     msg = "Total AutoCorrect entries: " & n & vbCrLf & vbCrLf
@@ -29,5 +29,5 @@ Public Sub OfficeChat_Diag()
     On Error GoTo 0
     If Not e Is Nothing Then v = e.Value
     msg = msg & "Game entry value:" & vbCrLf & v
-    MsgBox msg, vbInformation, "OfficeChat Diagnostics"
+    MsgBox msg, vbInformation, "Tom Riddle Diagnostics"
 End Sub
