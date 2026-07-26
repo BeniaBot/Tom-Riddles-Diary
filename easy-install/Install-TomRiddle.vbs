@@ -35,14 +35,19 @@ Function CellCh(raw, i)
         CellCh = ch
     End If
 End Function
+Function GRow(raw, a, b, c)
+    Dim v
+    v = ChrW(9474)
+    GRow = ChrW(8234) & v & " " & CellCh(raw,a) & " " & v & " " & CellCh(raw,b) & " " & v & " " & CellCh(raw,c) & " " & v & ChrW(8236)
+End Function
+Function GLine(lft, jn, rgt)
+    Dim h
+    h = ChrW(9472) & ChrW(9472) & ChrW(9472)
+    GLine = ChrW(8234) & ChrW(lft) & h & ChrW(jn) & h & ChrW(jn) & h & ChrW(rgt) & ChrW(8236)
+End Function
 Function BoardText(raw, status)
-    Dim r1, r2, r3, s, nl, L, P
+    Dim s, nl
     nl = ChrW(11)
-    L = ChrW(8234)
-    P = ChrW(8236)
-    r1 = L & " " & CellCh(raw,1) & " | " & CellCh(raw,2) & " | " & CellCh(raw,3) & " " & P
-    r2 = L & " " & CellCh(raw,4) & " | " & CellCh(raw,5) & " | " & CellCh(raw,6) & " " & P
-    r3 = L & " " & CellCh(raw,7) & " | " & CellCh(raw,8) & " | " & CellCh(raw,9) & " " & P
     Select Case status
         Case "play"
             s = U("1514 1493 1512 1498 33 32 32 58 41")
@@ -53,7 +58,13 @@ Function BoardText(raw, status)
         Case "win"
             s = U("1504 1497 1510 1495 1514 33 32 1499 1500 32 1492 1499 1489 1493 1491 33 32 32 58 41")
     End Select
-    BoardText = r1 & nl & r2 & nl & r3 & nl & s & nl
+    BoardText = GLine(9484, 9516, 9488) & nl
+    BoardText = BoardText & GRow(raw, 1, 2, 3) & nl
+    BoardText = BoardText & GLine(9500, 9532, 9508) & nl
+    BoardText = BoardText & GRow(raw, 4, 5, 6) & nl
+    BoardText = BoardText & GLine(9500, 9532, 9508) & nl
+    BoardText = BoardText & GRow(raw, 7, 8, 9) & nl
+    BoardText = BoardText & GLine(9492, 9524, 9496) & nl & s & nl
 End Function
 Sub AddP(nm, val)
     On Error Resume Next

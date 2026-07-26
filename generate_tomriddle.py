@@ -92,6 +92,17 @@ P_LOSE="ניצחתי! משחק טוב.  :)"
 P_DRAW="תיקו! משחק צמוד.  :)"
 P_WIN="ניצחת! כל הכבוד!  :)"
 
+# Light box-drawing frame.  All of these are exactly one cell wide in a
+# monospace font (measured in Consolas: every glyph below is the same advance
+# width as a digit), so the grid lines up.  Heavier/geometric variants such as
+# U+2715 or the emoji marks fall back to a double-width font and break it.
+BOX={
+ 'h':0x2500,'v':0x2502,                      # ─ │
+ 'tl':0x250C,'tj':0x252C,'tr':0x2510,        # ┌ ┬ ┐
+ 'ml':0x251C,'mj':0x253C,'mr':0x2524,        # ├ ┼ ┤
+ 'bl':0x2514,'bj':0x2534,'br':0x2518,        # └ ┴ ┘
+}
+
 PFX_CODES="1514 1514 1514"          # "תתת"  = game trigger prefix (Hebrew)
 PLAY_ALIAS_CODES="1489 1493 1488 32 1504 1513 1495 1511"  # "בוא נשחק" -> opens board
 
@@ -134,22 +145,34 @@ def build_setup():
     w("Private Function CellCh(ByVal raw As String, ByVal i As Long) As String\n")
     w("    Dim ch As String\n    ch = Mid(raw, i, 1)\n")
     w("    If ch = \" \" Then\n        CellCh = CStr(i)\n    Else\n        CellCh = ch\n    End If\nEnd Function\n\n")
+    # one grid row:  LRE | x | x | x | PDF   (13 chars, no padding before the frame)
+    w("Private Function GRow(ByVal raw As String, ByVal a As Long, ByVal b As Long, ByVal c As Long) As String\n")
+    w("    Dim v As String\n")
+    w("    v = ChrW(%d)\n"%BOX['v'])
+    w('    GRow = ChrW(8234) & v & " " & CellCh(raw,a) & " " & v & " " & CellCh(raw,b) & " " & v & " " & CellCh(raw,c) & " " & v & ChrW(8236)\n')
+    w("End Function\n\n")
+    # one horizontal rule of the frame
+    w("Private Function GLine(ByVal lft As Long, ByVal jn As Long, ByVal rgt As Long) As String\n")
+    w("    Dim h As String\n")
+    w("    h = ChrW(%d) & ChrW(%d) & ChrW(%d)\n"%(BOX['h'],BOX['h'],BOX['h']))
+    w("    GLine = ChrW(8234) & ChrW(lft) & h & ChrW(jn) & h & ChrW(jn) & h & ChrW(rgt) & ChrW(8236)\n")
+    w("End Function\n\n")
     w("Private Function BoardText(ByVal raw As String, ByVal status As String) As String\n")
-    w("    Dim r1 As String, r2 As String, r3 As String, s As String\n")
-    w("    Dim nl As String, L As String, P As String\n")
+    w("    Dim s As String, nl As String\n")
     w("    nl = ChrW(11)\n")     # soft line break (stacks rows, stays one plain entry)
-    w("    L = ChrW(8234)\n")    # LRE: force left-to-right so digits are not reversed
-    w("    P = ChrW(8236)\n")    # PDF: end the LTR run
-    w('    r1 = L & " " & CellCh(raw,1) & " | " & CellCh(raw,2) & " | " & CellCh(raw,3) & " " & P\n')
-    w('    r2 = L & " " & CellCh(raw,4) & " | " & CellCh(raw,5) & " | " & CellCh(raw,6) & " " & P\n')
-    w('    r3 = L & " " & CellCh(raw,7) & " | " & CellCh(raw,8) & " | " & CellCh(raw,9) & " " & P\n')
     w("    Select Case status\n")
     w('        Case "play"\n            s = U("%s")\n'%codes(P_PLAY))
     w('        Case "lose"\n            s = U("%s")\n'%codes(P_LOSE))
     w('        Case "draw"\n            s = U("%s")\n'%codes(P_DRAW))
     w('        Case "win"\n            s = U("%s")\n'%codes(P_WIN))
     w("    End Select\n")
-    w("    BoardText = r1 & nl & r2 & nl & r3 & nl & s & nl\n")
+    w("    BoardText = GLine(%d, %d, %d) & nl\n"%(BOX['tl'],BOX['tj'],BOX['tr']))
+    w("    BoardText = BoardText & GRow(raw, 1, 2, 3) & nl\n")
+    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
+    w("    BoardText = BoardText & GRow(raw, 4, 5, 6) & nl\n")
+    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
+    w("    BoardText = BoardText & GRow(raw, 7, 8, 9) & nl\n")
+    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl & s & nl\n"%(BOX['bl'],BOX['bj'],BOX['br']))
     w("End Function\n\n")
     w("Private Sub G(ByVal key As String, ByVal raw As String, ByVal status As String)\n")
     w('    AddPlain U("%s") & key, BoardText(raw, status)\n'%PFX_CODES)
@@ -250,17 +273,28 @@ def build_vbs(install=True):
     if install:
         w("Function CellCh(raw, i)\n    Dim ch\n    ch = Mid(raw, i, 1)\n")
         w("    If ch = \" \" Then\n        CellCh = CStr(i)\n    Else\n        CellCh = ch\n    End If\nEnd Function\n")
-        w("Function BoardText(raw, status)\n    Dim r1, r2, r3, s, nl, L, P\n")
-        w("    nl = ChrW(11)\n    L = ChrW(8234)\n    P = ChrW(8236)\n")
-        w("    r1 = L & \" \" & CellCh(raw,1) & \" | \" & CellCh(raw,2) & \" | \" & CellCh(raw,3) & \" \" & P\n")
-        w("    r2 = L & \" \" & CellCh(raw,4) & \" | \" & CellCh(raw,5) & \" | \" & CellCh(raw,6) & \" \" & P\n")
-        w("    r3 = L & \" \" & CellCh(raw,7) & \" | \" & CellCh(raw,8) & \" | \" & CellCh(raw,9) & \" \" & P\n")
+        w("Function GRow(raw, a, b, c)\n    Dim v\n    v = ChrW(%d)\n"%BOX['v'])
+        w('    GRow = ChrW(8234) & v & " " & CellCh(raw,a) & " " & v & " " & CellCh(raw,b) & " " & v & " " & CellCh(raw,c) & " " & v & ChrW(8236)\n')
+        w("End Function\n")
+        w("Function GLine(lft, jn, rgt)\n    Dim h\n")
+        w("    h = ChrW(%d) & ChrW(%d) & ChrW(%d)\n"%(BOX['h'],BOX['h'],BOX['h']))
+        w("    GLine = ChrW(8234) & ChrW(lft) & h & ChrW(jn) & h & ChrW(jn) & h & ChrW(rgt) & ChrW(8236)\n")
+        w("End Function\n")
+        w("Function BoardText(raw, status)\n    Dim s, nl\n")
+        w("    nl = ChrW(11)\n")
         w("    Select Case status\n")
         w('        Case "play"\n            s = U("%s")\n'%codes(P_PLAY))
         w('        Case "lose"\n            s = U("%s")\n'%codes(P_LOSE))
         w('        Case "draw"\n            s = U("%s")\n'%codes(P_DRAW))
         w('        Case "win"\n            s = U("%s")\n'%codes(P_WIN))
-        w("    End Select\n    BoardText = r1 & nl & r2 & nl & r3 & nl & s & nl\nEnd Function\n")
+        w("    End Select\n")
+        w("    BoardText = GLine(%d, %d, %d) & nl\n"%(BOX['tl'],BOX['tj'],BOX['tr']))
+        w("    BoardText = BoardText & GRow(raw, 1, 2, 3) & nl\n")
+        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
+        w("    BoardText = BoardText & GRow(raw, 4, 5, 6) & nl\n")
+        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
+        w("    BoardText = BoardText & GRow(raw, 7, 8, 9) & nl\n")
+        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl & s & nl\nEnd Function\n"%(BOX['bl'],BOX['bj'],BOX['br']))
         w("Sub AddP(nm, val)\n    On Error Resume Next\n    word.AutoCorrect.Entries.Add nm, val\n    On Error GoTo 0\nEnd Sub\n")
         w("Sub AddG(key, raw, status)\n    AddP U(\"%s\") & key, BoardText(raw, status)\nEnd Sub\n"%PFX_CODES)
         for nm,val in CHAT: w("AddP %s, %s & vbCr\n"%(vstr(nm),vstr(val)))
@@ -293,7 +327,9 @@ open("Uninstall-TomRiddle.vbs","w",encoding="ascii").write(build_vbs(False))
 def cell(raw,i):
     ch=raw[i-1]; return str(i) if ch==' ' else ch
 def bl(raw,status):
-    b="%s|%s|%s / %s|%s|%s / %s|%s|%s"%tuple(cell(raw,i) for i in range(1,10))
+    v=chr(BOX['v'])
+    b=" / ".join("%s%s%s%s%s%s%s"%(v,cell(raw,i),v,cell(raw,i+1),v,cell(raw,i+2),v)
+                 for i in (1,4,7))
     s={'play':P_PLAY,'lose':P_LOSE,'draw':P_DRAW,'win':P_WIN}[status]
     return "%s  %s"%(b,s)
 with open("tomriddle_all_replacements.txt","w",encoding="utf-8") as f:

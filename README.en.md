@@ -122,8 +122,9 @@ automatically.
 ## ⚠️ Notes
 
 - Tom Riddle only edits your **AutoCorrect** entries; the uninstaller reverts them.
-- Column alignment depends on the document font — a monospace font (e.g. Consolas)
-  lines the board up best.
+- **Set the document to Consolas** (or another monospace font). The board frame only
+  lines up in a monospace font; in Calibri — Word's default — the frame glyphs are a
+  different width from the digits and the grid breaks.
 - This is a toy/prank. Use it to have fun. 🙂
 
 ## 📄 License
