@@ -61,36 +61,38 @@ Type the phrase, then a **space**, and Word replaces it.
 (Full list: [`docs/replacements.txt`](docs/replacements.txt))
 
 **Tic-Tac-Toe:**
-- Type **`בוא נשחק`** → a board appears. You are **X**, the computer is **O**.
-- To play a move, type your **secret code**: `תתת` + the digits of the cells you've
-  chosen so far.
-  - First move to cell 5: `תתת5`
-  - then cell 9: `תתת59`
-  - then cell 3: `תתת593`
-- The board shows numbers `1–9` in the empty cells, so you always know what to append.
+- Type **`בוא נשחק`** → a board (a real table) appears. You are **X**, the computer
+  is **O**.
+- Each turn: at the end of the **"המהלך שלך הוא- "** line, type just the **cell
+  digit** (as shown on the board) and a **space** — the next board appears by
+  itself. **No codes, nothing to remember.**
+- The digit you type may not show on screen — that's intentional, part of the magic.
+- Typed a wrong digit (occupied cell)? **Backspace** and type again.
 
-Your audience just sees the board update and the "AI" saying *תורך!* / *ניצחתי!*.
+Your audience just sees boards appearing "on their own" and the "AI" winning. 😈
 
 ---
 
 ## 🧠 How it works
 
 Word's **AutoCorrect** replaces text as you type. Tom Riddle registers a large set of
-replacements: fixed phrases for chat, and one entry per Tic-Tac-Toe state. Because
-AutoCorrect is stateless, the *code you type* (`תתת` + your moves) encodes the entire
-game so far, and the matching entry supplies the next board.
+formatted replacements: fixed phrases for chat, and a real-table board per game
+state. Because AutoCorrect is stateless, every board plants a **hidden token**
+(Hidden-formatted text) at the end of its "המהלך שלך הוא- " line, encoding the whole
+game so far; the digit you type joins it to form the next board's trigger. Word's
+matcher reads the document text — hidden runs and the space left by the previous
+fire included — so the chain sustains itself.
 
-Two non-obvious quirks this project works around:
+Three non-obvious quirks this project works around:
 
-1. **AutoCorrect lists are per-language.** Entries added via automation land in one
-   language's list. A Latin trigger like `ttt` typed in an English run is matched
-   against the *English* list and never fires, while a Hebrew trigger matches the
-   Hebrew list. That's why the game trigger is Hebrew (`תתת`).
-2. **Loop prevention.** Word won't apply a replacement whose result contains the
-   trigger itself, so no board text repeats its own code.
-
-Boards are rendered with a soft line break (so they stack into a grid) and wrapped in
-Unicode LTR marks (so the digits don't reverse inside a right-to-left document).
+1. **Formatted entries are global.** Plain-text entries live in per-language lists,
+   and entries added via automation land in a list your typing may never consult —
+   so everything here is a formatted entry (which also lifts the 255-char value cap).
+2. **Loop prevention.** Word won't apply a replacement whose result contains its own
+   trigger — so each board's new token encodes the history **reversed**, guaranteeing
+   the trigger that just fired never appears in the result.
+3. **A table inserted mid-line swallows the text before it** — so every board value
+   starts with a paragraph mark.
 
 ---
 

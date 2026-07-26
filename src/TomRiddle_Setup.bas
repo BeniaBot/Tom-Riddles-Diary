@@ -3,9 +3,10 @@ Attribute VB_Name = "TomRiddle_Setup"
 '  Tom Riddle - Setup.  IMPORT this file (File > Import File), then F5
 '  -> TomRiddle_Install.  Do NOT copy-paste into the code window.
 '  All entries are FORMATTED AutoCorrect entries (AddRichText): boards
-'  are real tables.  They live in Normal.dotm - the installer performs
-'  a REAL NormalTemplate.Save at the end; without it NOTHING persists
-'  after Word closes (plain entries added via automation never persist).
+'  are real tables ending with a HIDDEN carry token; the player types
+'  only the cell digit.  Entries live in Normal.dotm - the installer
+'  performs a REAL NormalTemplate.Save at the end; without it NOTHING
+'  persists after Word closes.
 ' ===================================================================
 Option Explicit
 
@@ -30,6 +31,21 @@ Private Function U(ByVal codes As String) As String
     U = s
 End Function
 
+Private Function IsGameName(ByVal nm As String) As Boolean
+    Dim j As Long, c As String
+    If Len(nm) < 2 Then Exit Function
+    If Left(nm, 3) = U("1514 1514 1514") Then
+        IsGameName = True
+        Exit Function
+    End If
+    If Left(nm, 1) <> U("1509") Then Exit Function
+    For j = 2 To Len(nm)
+        c = Mid(nm, j, 1)
+        If Not (c = " " Or c = U("1509") Or (c >= "0" And c <= "9")) Then Exit Function
+    Next j
+    IsGameName = True
+End Function
+
 Private Sub AddRich(ByVal nm As String, ByVal rng As Range)
     ' delete in a loop: a plain and a rich entry can share the same name
     Dim t As Long
@@ -47,7 +63,7 @@ End Sub
 Private Function StatusText(ByVal status As String) As String
     Select Case status
         Case "play"
-            StatusText = U("1514 1493 1512 1498 33 32 32 58 41")
+            StatusText = U("1492 1502 1492 1500 1498 32 1513 1500 1498 32 1492 1493 1488 45 32")
         Case "lose"
             StatusText = U("1504 1497 1510 1495 1514 1497 33 32 1502 1513 1495 1511 32 1496 1493 1489 46 32 32 58 41")
         Case "draw"
@@ -68,8 +84,14 @@ End Sub
 Private Sub BoardDoc()
     ' NO ParagraphFormat calls here: on a windowless document they
     ' crash the Word process (see the CRASH RULE in the generator).
+    ' Layout: [paragraph mark][3x3 table][status/move paragraph].
+    ' The LEADING paragraph mark is required: without it, inserting
+    ' the value mid-line absorbs the preceding text into the table.
     tDoc.Content.Delete
-    Set tTbl = tDoc.Tables.Add(tDoc.Range(0, 0), 3, 3)
+    Dim r As Range
+    Set r = tDoc.Range(0, 0)
+    r.Text = vbCr
+    Set tTbl = tDoc.Tables.Add(tDoc.Range(1, 1), 3, 3)
     tTbl.Borders.InsideLineStyle = 1
     tTbl.Borders.OutsideLineStyle = 1
     tTbl.Rows.Alignment = 1
@@ -107,8 +129,8 @@ Private Sub SetCell(ByVal i As Long, ByVal ch As String)
     End If
 End Sub
 
-Private Sub SetBoard(ByVal raw As String, ByVal status As String)
-    Dim i As Long, ch As String, sr As Range
+Private Sub SetBoard(ByVal raw As String, ByVal status As String, ByVal tok As String)
+    Dim i As Long, ch As String, sr As Range, tk As Range
     Set tTbl = tDoc.Tables(1)   ' re-fetch: table pointers can go stale
     For i = 1 To 9
         ch = Mid(raw, i, 1)
@@ -117,16 +139,33 @@ Private Sub SetBoard(ByVal raw As String, ByVal status As String)
     Next i
     Set sr = tDoc.Paragraphs.Last.Range
     sr.End = sr.End - 1
-    sr.Text = StatusText(status)
+    If Len(tok) > 0 Then
+        sr.Text = StatusText("play") & tok
+    Else
+        sr.Text = StatusText(status)
+    End If
+    ' un-hide the whole line, then hide only the carry token
+    Set sr = tDoc.Paragraphs.Last.Range
+    sr.Font.Hidden = False
+    If Len(tok) > 0 Then
+        Set tk = tDoc.Range(sr.End - 1 - Len(tok), sr.End - 1)
+        tk.Font.Hidden = True
+    End If
 End Sub
 
-Private Sub G(ByVal key As String, ByVal raw As String, ByVal status As String)
-    SetBoard raw, status
-    AddRich U("1514 1514 1514") & key, tDoc.Content
+Private Sub G(ByVal nm As String, ByVal raw As String, ByVal status As String, ByVal tok As String)
+    SetBoard raw, status, tok
+    If Len(tok) > 0 Then
+        ' play boards end AT the token so typing continues on the line
+        AddRich nm, tDoc.Range(0, tDoc.Content.End - 1)
+    Else
+        AddRich nm, tDoc.Content
+    End If
 End Sub
 
 Public Sub TomRiddle_Install()
     MsgBox U("1502 1514 1511 1497 1503 32 1488 1514 32 1492 1497 1493 1502 1503 32 1513 1500 32 1514 1493 1501 32 1512 1497 1491 1500 46 46 46 32 1492 1492 1514 1511 1504 1492 32 1488 1493 1512 1499 1514 32 50 45 51 32 1491 1511 1493 1514 46 32 1500 1488 32 1500 1505 1490 1493 1512 32 1488 1514 32 1493 1493 1512 1491 32 1506 1491 32 1492 1493 1491 1506 1514 32 1492 1505 1497 1493 1501 46"), 1572928, U("1492 1497 1493 1502 1503 32 1513 1500 32 1514 1493 1501 32 1512 1497 1491 1500")
+    SweepGame   ' clear any previous version (old scheme included)
     ' NOTE: do NOT set ScreenUpdating = False - combined with an
     ' invisible document it reproducibly crashes Word (RPC failure).
     Set tDoc = Documents.Add(Visible:=False)
@@ -140,21 +179,35 @@ Public Sub TomRiddle_Install()
     InstallGame6
     InstallGame7
     InstallGame8
-    InstallAlias
+    InstallOpener
     tDoc.Saved = True
     tDoc.Close 0
     Set tDoc = Nothing
-    Dim i As Long, n As Long, p3 As String
-    p3 = U("1514 1514 1514")
-    For i = 1 To Application.AutoCorrect.Entries.Count
-        If Left(Application.AutoCorrect.Entries(i).Name, 3) = p3 Then n = n + 1
-    Next i
+    Dim n As Long
+    n = CountGame()
     ' REAL save - this is what makes the install survive Word closing
     On Error Resume Next
     NormalTemplate.Save
     On Error GoTo 0
     MsgBox U("1492 1497 1493 1502 1503 32 1513 1500 32 1514 1493 1501 32 1512 1497 1491 1500 32 1502 1493 1499 1503 33 32 1504 1513 1502 1512 1493 32") & n & U("32 1500 1493 1495 1493 1514 32 1502 1513 1495 1511 46 32 32 58 41") & vbCr & U("1504 1505 1492 32 1489 1493 1493 1512 1491 58 32 32 1492 1497 1497 32 1510 1488 1496"), 1572928, U("1492 1497 1493 1502 1503 32 1513 1500 32 1514 1493 1501 32 1512 1497 1491 1500")
 End Sub
+
+Private Sub SweepGame()
+    Dim i As Long
+    For i = Application.AutoCorrect.Entries.Count To 1 Step -1
+        If IsGameName(Application.AutoCorrect.Entries(i).Name) Then
+            Application.AutoCorrect.Entries(i).Delete
+        End If
+    Next i
+End Sub
+
+Private Function CountGame() As Long
+    Dim i As Long, n As Long
+    For i = 1 To Application.AutoCorrect.Entries.Count
+        If IsGameName(Application.AutoCorrect.Entries(i).Name) Then n = n + 1
+    Next i
+    CountGame = n
+End Function
 
 Private Sub InstallChat()
     ' no alignment set: the template default paragraph (RTL Hebrew
@@ -185,1152 +238,1151 @@ Private Sub InstallChat()
     AddChat U("1510 1488 1496 32 1506 1494 1512 1492"), U("1488 1508 1513 1512 32 1500 1513 1493 1495 1495 32 1488 1493 32 1500 1513 1495 1511 33 32 1504 1505 1492 58 32 34 1510 1488 1496 32 1505 1508 1512 32 1489 1491 1497 1495 1492 34 32 1488 1493 32 34 1489 1493 1488 32 1504 1513 1495 1511 34 46 32 32 58 41")
 End Sub
 
-Private Sub InstallAlias()
-    SetBoard "         ", "play"
-    AddRich U("1489 1493 1488 32 1504 1513 1495 1511"), tDoc.Content
+Private Sub InstallOpener()
+    SetBoard "         ", "play", U("1509 1509")
+    AddRich U("1489 1493 1488 32 1504 1513 1495 1511"), tDoc.Range(0, tDoc.Content.End - 1)
 End Sub
 
 Private Sub InstallGame1()
-    G "", "         ", "play"
-    G "1", "X   O    ", "play"
-    G "2", "OX       ", "play"
-    G "3", "  X O    ", "play"
-    G "4", "O  X     ", "play"
-    G "5", "O   X    ", "play"
-    G "6", "  O  X   ", "play"
-    G "7", "    O X  ", "play"
-    G "8", " O     X ", "play"
-    G "9", "    O   X", "play"
-    G "12", "XXO O    ", "play"
-    G "13", "XOX O    ", "play"
-    G "14", "X  XO O  ", "play"
-    G "16", "XO  OX   ", "play"
-    G "17", "X  OO X  ", "play"
-    G "18", "X  OO  X ", "play"
-    G "19", "XO  O   X", "play"
-    G "23", "OXXO     ", "play"
-    G "24", "OX XO    ", "play"
-    G "25", "OX  X  O ", "play"
-    G "26", "OX   XO  ", "play"
-    G "27", "OX  O X  ", "play"
-    G "28", "OX  O  X ", "play"
-    G "29", "OX  O   X", "play"
-    G "31", "XOX O    ", "play"
-    G "32", "OXX O    ", "play"
-    G "34", "O XXO    ", "play"
-    G "36", "  X OX  O", "play"
-    G "37", " OX O X  ", "play"
-    G "38", "  XOO  X ", "play"
-    G "39", "  X OO  X", "play"
-    G "42", "OX XO    ", "play"
-    G "43", "O XXO    ", "play"
-    G "45", "O  XXO   ", "play"
-    G "46", "O  XOX   ", "play"
-    G "47", "OO X  X  ", "play"
-    G "48", "O OX   X ", "play"
-    G "49", "O OX    X", "play"
-    G "52", "OX  X  O ", "play"
-    G "53", "O X X O  ", "play"
-    G "54", "O  XXO   ", "play"
-    G "56", "O  OXX   ", "play"
-    G "57", "O O X X  ", "play"
-    G "58", "OO  X  X ", "play"
-    G "59", "O O X   X", "play"
-    G "61", "X OO X   ", "play"
-    G "62", " XOO X   ", "play"
-    G "64", "  OXOX   ", "play"
-    G "65", "  OOXX   ", "play"
-    G "67", "O O  XX  ", "play"
-    G "68", "O O  X X ", "play"
-    G "69", "O O  X  X", "play"
-    G "71", "X  OO X  ", "play"
-    G "72", "OX  O X  ", "play"
-    G "73", " OX O X  ", "play"
-    G "74", "O  XO X  ", "play"
-    G "76", " O  OXX  ", "play"
-    G "78", "    O XXO", "play"
-    G "79", "    O XOX", "play"
-    G "81", "XO    OX ", "play"
-    G "83", " OX   OX ", "play"
-    G "84", " O X  OX ", "play"
-    G "85", "OO  X  X ", "play"
-    G "86", " O   XOX ", "play"
-    G "87", " O    XXO", "play"
-    G "89", " O    OXX", "play"
-    G "91", "XO  O   X", "play"
-    G "92", "OX  O   X", "play"
-    G "93", "  X OO  X", "play"
-    G "94", "O  XO   X", "play"
-    G "96", "  O OX  X", "play"
-    G "97", "    O XOX", "play"
-    G "98", "    O OXX", "play"
-    G "124", "XXOXO O  ", "lose"
-    G "126", "XXO OXO  ", "lose"
-    G "127", "XXOOO X  ", "play"
-    G "128", "XXOOO  X ", "play"
-    G "129", "XXOOO   X", "play"
-    G "134", "XOXXO  O ", "lose"
-    G "136", "XOX OX O ", "lose"
-    G "137", "XOXOO X  ", "play"
-    G "138", "XOXOO  X ", "play"
-    G "139", "XOX OO  X", "play"
-    G "142", "XXOXO O  ", "lose"
-    G "143", "XOXXO O  ", "play"
-    G "146", "XO XOXO  ", "play"
-    G "148", "X OXO OX ", "lose"
-    G "149", "XO XO O X", "play"
-    G "163", "XOX OX O ", "lose"
-    G "164", "XO XOXO  ", "play"
-    G "167", "XO  OXXO ", "lose"
-    G "168", "XO  OXOX ", "play"
-    G "169", "XOO OX  X", "play"
-    G "172", "XX OOOX  ", "lose"
-    G "173", "XOXOO X  ", "play"
-    G "176", "XO OOXX  ", "play"
-    G "178", "X  OOOXX ", "lose"
-    G "179", "X  OOOX X", "lose"
-    G "182", "XXOOO  X ", "play"
-    G "183", "X XOOO X ", "lose"
-    G "186", "X OOOX X ", "play"
-    G "187", "X  OOOXX ", "lose"
-    G "189", "X  OOO XX", "lose"
-    G "193", "XOX OO  X", "play"
-    G "194", "XO XO O X", "play"
-    G "196", "XOO OX  X", "play"
-    G "197", "XO  O XOX", "lose"
-    G "198", "XO  O OXX", "play"
-    G "235", "OXXOX O  ", "lose"
-    G "236", "OXXO XO  ", "lose"
-    G "237", "OXXOO X  ", "play"
-    G "238", "OXXOO  X ", "play"
-    G "239", "OXXO O  X", "play"
-    G "243", "OXXXO   O", "lose"
-    G "246", "OXOXOX   ", "play"
-    G "247", "OX XO X O", "lose"
-    G "248", "OXOXO  X ", "play"
-    G "249", "OXOXO   X", "play"
-    G "253", "OXX X OO ", "play"
-    G "254", "OX XXO O ", "play"
-    G "256", "OX OXX O ", "play"
-    G "257", "OXO X XO ", "play"
-    G "259", "OXO X  OX", "play"
-    G "263", "OXXO XO  ", "lose"
-    G "264", "OX XOXO  ", "play"
-    G "265", "OX OXXO  ", "lose"
-    G "268", "OX O XOX ", "lose"
-    G "269", "OXO  XO X", "play"
-    G "273", "OXXOO X  ", "play"
-    G "274", "OX XO X O", "lose"
-    G "276", "OX  OXX O", "lose"
-    G "278", "OX  O XXO", "lose"
-    G "279", "OX  O XOX", "play"
-    G "283", "OXXOO  X ", "play"
-    G "284", "OXOXO  X ", "play"
-    G "286", "OXO OX X ", "play"
-    G "287", "OX  O XXO", "lose"
-    G "289", "OX  O OXX", "play"
-    G "293", "OXX OO  X", "play"
-    G "294", "OXOXO   X", "play"
+    G U("1509 1509 49"), "X   O    ", "play", U("1509 49")
+    G U("1509 1509 50"), "OX       ", "play", U("1509 50")
+    G U("1509 1509 51"), "  X O    ", "play", U("1509 51")
+    G U("1509 1509 52"), "O  X     ", "play", U("1509 52")
+    G U("1509 1509 53"), "O   X    ", "play", U("1509 53")
+    G U("1509 1509 54"), "  O  X   ", "play", U("1509 54")
+    G U("1509 1509 55"), "    O X  ", "play", U("1509 55")
+    G U("1509 1509 56"), " O     X ", "play", U("1509 56")
+    G U("1509 1509 57"), "    O   X", "play", U("1509 57")
+    G U("1509 49 32 50"), "XXO O    ", "play", U("1509 50 49")
+    G U("1509 49 32 51"), "XOX O    ", "play", U("1509 51 49")
+    G U("1509 49 32 52"), "X  XO O  ", "play", U("1509 52 49")
+    G U("1509 49 32 54"), "XO  OX   ", "play", U("1509 54 49")
+    G U("1509 49 32 55"), "X  OO X  ", "play", U("1509 55 49")
+    G U("1509 49 32 56"), "X  OO  X ", "play", U("1509 56 49")
+    G U("1509 49 32 57"), "XO  O   X", "play", U("1509 57 49")
+    G U("1509 50 32 51"), "OXXO     ", "play", U("1509 51 50")
+    G U("1509 50 32 52"), "OX XO    ", "play", U("1509 52 50")
+    G U("1509 50 32 53"), "OX  X  O ", "play", U("1509 53 50")
+    G U("1509 50 32 54"), "OX   XO  ", "play", U("1509 54 50")
+    G U("1509 50 32 55"), "OX  O X  ", "play", U("1509 55 50")
+    G U("1509 50 32 56"), "OX  O  X ", "play", U("1509 56 50")
+    G U("1509 50 32 57"), "OX  O   X", "play", U("1509 57 50")
+    G U("1509 51 32 49"), "XOX O    ", "play", U("1509 49 51")
+    G U("1509 51 32 50"), "OXX O    ", "play", U("1509 50 51")
+    G U("1509 51 32 52"), "O XXO    ", "play", U("1509 52 51")
+    G U("1509 51 32 54"), "  X OX  O", "play", U("1509 54 51")
+    G U("1509 51 32 55"), " OX O X  ", "play", U("1509 55 51")
+    G U("1509 51 32 56"), "  XOO  X ", "play", U("1509 56 51")
+    G U("1509 51 32 57"), "  X OO  X", "play", U("1509 57 51")
+    G U("1509 52 32 50"), "OX XO    ", "play", U("1509 50 52")
+    G U("1509 52 32 51"), "O XXO    ", "play", U("1509 51 52")
+    G U("1509 52 32 53"), "O  XXO   ", "play", U("1509 53 52")
+    G U("1509 52 32 54"), "O  XOX   ", "play", U("1509 54 52")
+    G U("1509 52 32 55"), "OO X  X  ", "play", U("1509 55 52")
+    G U("1509 52 32 56"), "O OX   X ", "play", U("1509 56 52")
+    G U("1509 52 32 57"), "O OX    X", "play", U("1509 57 52")
+    G U("1509 53 32 50"), "OX  X  O ", "play", U("1509 50 53")
+    G U("1509 53 32 51"), "O X X O  ", "play", U("1509 51 53")
+    G U("1509 53 32 52"), "O  XXO   ", "play", U("1509 52 53")
+    G U("1509 53 32 54"), "O  OXX   ", "play", U("1509 54 53")
+    G U("1509 53 32 55"), "O O X X  ", "play", U("1509 55 53")
+    G U("1509 53 32 56"), "OO  X  X ", "play", U("1509 56 53")
+    G U("1509 53 32 57"), "O O X   X", "play", U("1509 57 53")
+    G U("1509 54 32 49"), "X OO X   ", "play", U("1509 49 54")
+    G U("1509 54 32 50"), " XOO X   ", "play", U("1509 50 54")
+    G U("1509 54 32 52"), "  OXOX   ", "play", U("1509 52 54")
+    G U("1509 54 32 53"), "  OOXX   ", "play", U("1509 53 54")
+    G U("1509 54 32 55"), "O O  XX  ", "play", U("1509 55 54")
+    G U("1509 54 32 56"), "O O  X X ", "play", U("1509 56 54")
+    G U("1509 54 32 57"), "O O  X  X", "play", U("1509 57 54")
+    G U("1509 55 32 49"), "X  OO X  ", "play", U("1509 49 55")
+    G U("1509 55 32 50"), "OX  O X  ", "play", U("1509 50 55")
+    G U("1509 55 32 51"), " OX O X  ", "play", U("1509 51 55")
+    G U("1509 55 32 52"), "O  XO X  ", "play", U("1509 52 55")
+    G U("1509 55 32 54"), " O  OXX  ", "play", U("1509 54 55")
+    G U("1509 55 32 56"), "    O XXO", "play", U("1509 56 55")
+    G U("1509 55 32 57"), "    O XOX", "play", U("1509 57 55")
+    G U("1509 56 32 49"), "XO    OX ", "play", U("1509 49 56")
+    G U("1509 56 32 51"), " OX   OX ", "play", U("1509 51 56")
+    G U("1509 56 32 52"), " O X  OX ", "play", U("1509 52 56")
+    G U("1509 56 32 53"), "OO  X  X ", "play", U("1509 53 56")
+    G U("1509 56 32 54"), " O   XOX ", "play", U("1509 54 56")
+    G U("1509 56 32 55"), " O    XXO", "play", U("1509 55 56")
+    G U("1509 56 32 57"), " O    OXX", "play", U("1509 57 56")
+    G U("1509 57 32 49"), "XO  O   X", "play", U("1509 49 57")
+    G U("1509 57 32 50"), "OX  O   X", "play", U("1509 50 57")
+    G U("1509 57 32 51"), "  X OO  X", "play", U("1509 51 57")
+    G U("1509 57 32 52"), "O  XO   X", "play", U("1509 52 57")
+    G U("1509 57 32 54"), "  O OX  X", "play", U("1509 54 57")
+    G U("1509 57 32 55"), "    O XOX", "play", U("1509 55 57")
+    G U("1509 57 32 56"), "    O OXX", "play", U("1509 56 57")
+    G U("1509 50 49 32 52"), "XXOXO O  ", "lose", U("")
+    G U("1509 50 49 32 54"), "XXO OXO  ", "lose", U("")
+    G U("1509 50 49 32 55"), "XXOOO X  ", "play", U("1509 55 50 49")
+    G U("1509 50 49 32 56"), "XXOOO  X ", "play", U("1509 56 50 49")
+    G U("1509 50 49 32 57"), "XXOOO   X", "play", U("1509 57 50 49")
+    G U("1509 51 49 32 52"), "XOXXO  O ", "lose", U("")
+    G U("1509 51 49 32 54"), "XOX OX O ", "lose", U("")
+    G U("1509 51 49 32 55"), "XOXOO X  ", "play", U("1509 55 51 49")
+    G U("1509 51 49 32 56"), "XOXOO  X ", "play", U("1509 56 51 49")
+    G U("1509 51 49 32 57"), "XOX OO  X", "play", U("1509 57 51 49")
+    G U("1509 52 49 32 50"), "XXOXO O  ", "lose", U("")
+    G U("1509 52 49 32 51"), "XOXXO O  ", "play", U("1509 51 52 49")
+    G U("1509 52 49 32 54"), "XO XOXO  ", "play", U("1509 54 52 49")
+    G U("1509 52 49 32 56"), "X OXO OX ", "lose", U("")
+    G U("1509 52 49 32 57"), "XO XO O X", "play", U("1509 57 52 49")
+    G U("1509 54 49 32 51"), "XOX OX O ", "lose", U("")
+    G U("1509 54 49 32 52"), "XO XOXO  ", "play", U("1509 52 54 49")
+    G U("1509 54 49 32 55"), "XO  OXXO ", "lose", U("")
+    G U("1509 54 49 32 56"), "XO  OXOX ", "play", U("1509 56 54 49")
+    G U("1509 54 49 32 57"), "XOO OX  X", "play", U("1509 57 54 49")
+    G U("1509 55 49 32 50"), "XX OOOX  ", "lose", U("")
+    G U("1509 55 49 32 51"), "XOXOO X  ", "play", U("1509 51 55 49")
+    G U("1509 55 49 32 54"), "XO OOXX  ", "play", U("1509 54 55 49")
+    G U("1509 55 49 32 56"), "X  OOOXX ", "lose", U("")
+    G U("1509 55 49 32 57"), "X  OOOX X", "lose", U("")
+    G U("1509 56 49 32 50"), "XXOOO  X ", "play", U("1509 50 56 49")
+    G U("1509 56 49 32 51"), "X XOOO X ", "lose", U("")
+    G U("1509 56 49 32 54"), "X OOOX X ", "play", U("1509 54 56 49")
+    G U("1509 56 49 32 55"), "X  OOOXX ", "lose", U("")
+    G U("1509 56 49 32 57"), "X  OOO XX", "lose", U("")
+    G U("1509 57 49 32 51"), "XOX OO  X", "play", U("1509 51 57 49")
+    G U("1509 57 49 32 52"), "XO XO O X", "play", U("1509 52 57 49")
+    G U("1509 57 49 32 54"), "XOO OX  X", "play", U("1509 54 57 49")
+    G U("1509 57 49 32 55"), "XO  O XOX", "lose", U("")
+    G U("1509 57 49 32 56"), "XO  O OXX", "play", U("1509 56 57 49")
+    G U("1509 51 50 32 53"), "OXXOX O  ", "lose", U("")
+    G U("1509 51 50 32 54"), "OXXO XO  ", "lose", U("")
+    G U("1509 51 50 32 55"), "OXXOO X  ", "play", U("1509 55 51 50")
+    G U("1509 51 50 32 56"), "OXXOO  X ", "play", U("1509 56 51 50")
+    G U("1509 51 50 32 57"), "OXXO O  X", "play", U("1509 57 51 50")
+    G U("1509 52 50 32 51"), "OXXXO   O", "lose", U("")
+    G U("1509 52 50 32 54"), "OXOXOX   ", "play", U("1509 54 52 50")
+    G U("1509 52 50 32 55"), "OX XO X O", "lose", U("")
+    G U("1509 52 50 32 56"), "OXOXO  X ", "play", U("1509 56 52 50")
+    G U("1509 52 50 32 57"), "OXOXO   X", "play", U("1509 57 52 50")
+    G U("1509 53 50 32 51"), "OXX X OO ", "play", U("1509 51 53 50")
+    G U("1509 53 50 32 52"), "OX XXO O ", "play", U("1509 52 53 50")
+    G U("1509 53 50 32 54"), "OX OXX O ", "play", U("1509 54 53 50")
+    G U("1509 53 50 32 55"), "OXO X XO ", "play", U("1509 55 53 50")
+    G U("1509 53 50 32 57"), "OXO X  OX", "play", U("1509 57 53 50")
+    G U("1509 54 50 32 51"), "OXXO XO  ", "lose", U("")
+    G U("1509 54 50 32 52"), "OX XOXO  ", "play", U("1509 52 54 50")
+    G U("1509 54 50 32 53"), "OX OXXO  ", "lose", U("")
+    G U("1509 54 50 32 56"), "OX O XOX ", "lose", U("")
+    G U("1509 54 50 32 57"), "OXO  XO X", "play", U("1509 57 54 50")
+    G U("1509 55 50 32 51"), "OXXOO X  ", "play", U("1509 51 55 50")
+    G U("1509 55 50 32 52"), "OX XO X O", "lose", U("")
+    G U("1509 55 50 32 54"), "OX  OXX O", "lose", U("")
+    G U("1509 55 50 32 56"), "OX  O XXO", "lose", U("")
+    G U("1509 55 50 32 57"), "OX  O XOX", "play", U("1509 57 55 50")
+    G U("1509 56 50 32 51"), "OXXOO  X ", "play", U("1509 51 56 50")
+    G U("1509 56 50 32 52"), "OXOXO  X ", "play", U("1509 52 56 50")
+    G U("1509 56 50 32 54"), "OXO OX X ", "play", U("1509 54 56 50")
+    G U("1509 56 50 32 55"), "OX  O XXO", "lose", U("")
+    G U("1509 56 50 32 57"), "OX  O OXX", "play", U("1509 57 56 50")
+    G U("1509 57 50 32 51"), "OXX OO  X", "play", U("1509 51 57 50")
+    G U("1509 57 50 32 52"), "OXOXO   X", "play", U("1509 52 57 50")
+    G U("1509 57 50 32 54"), "OXO OX  X", "play", U("1509 54 57 50")
 End Sub
 
 Private Sub InstallGame2()
-    G "296", "OXO OX  X", "play"
-    G "297", "OX  O XOX", "play"
-    G "298", "OX  O OXX", "play"
-    G "314", "XOXXO  O ", "lose"
-    G "316", "XOX OX O ", "lose"
-    G "317", "XOXOO X  ", "play"
-    G "318", "XOXOO  X ", "play"
-    G "319", "XOX OO  X", "play"
-    G "324", "OXXXO   O", "lose"
-    G "326", "OXX OX  O", "lose"
-    G "327", "OXXOO X  ", "play"
-    G "328", "OXXOO  X ", "play"
-    G "329", "OXX OO  X", "play"
-    G "342", "OXXXO   O", "lose"
-    G "346", "O XXOX  O", "lose"
-    G "347", "OOXXO X  ", "play"
-    G "348", "O XXO  XO", "lose"
-    G "349", "O XXOO  X", "play"
-    G "361", "XOX OX  O", "play"
-    G "362", "OXX OX  O", "lose"
-    G "364", "O XXOX  O", "lose"
-    G "367", "O X OXX O", "lose"
-    G "368", "O X OX XO", "lose"
-    G "371", "XOXOO X  ", "play"
-    G "374", "OOXXO X  ", "play"
-    G "376", " OX OXXO ", "lose"
-    G "378", " OX O XXO", "play"
-    G "379", " OX O XOX", "lose"
-    G "381", "X XOOO X ", "lose"
-    G "382", "OXXOO  X ", "play"
-    G "386", "  XOOX XO", "play"
-    G "387", "  XOOOXX ", "lose"
-    G "389", "  XOOO XX", "lose"
-    G "391", "XOX OO  X", "play"
-    G "392", " XXOOO  X", "lose"
-    G "394", "O XXOO  X", "play"
-    G "397", "  XOOOX X", "lose"
-    G "398", "  XOOO XX", "lose"
-    G "423", "OXXXO   O", "lose"
-    G "426", "OXOXOX   ", "play"
-    G "427", "OX XO X O", "lose"
-    G "428", "OXOXO  X ", "play"
-    G "429", "OXOXO   X", "play"
-    G "432", "OXXXO   O", "lose"
-    G "436", "O XXOX  O", "lose"
-    G "437", "OOXXO X  ", "play"
-    G "438", "O XXO  XO", "lose"
-    G "439", "O XXOO  X", "play"
-    G "452", "OX XXO O ", "play"
-    G "453", "O XXXOO  ", "play"
-    G "457", "O OXXOX  ", "play"
-    G "458", "OO XXO X ", "play"
-    G "459", "OO XXO  X", "play"
-    G "462", "OXOXOX   ", "play"
-    G "463", "O XXOX  O", "lose"
-    G "467", "OO XOXX  ", "play"
-    G "468", "OO XOX X ", "play"
-    G "469", "O OXOX  X", "play"
-    G "473", "OOXXO X  ", "play"
-    G "475", "OOOXX X  ", "lose"
-    G "476", "OOOX XX  ", "lose"
-    G "478", "OOOX  XX ", "lose"
-    G "479", "OOOX  X X", "lose"
-    G "482", "OXOXO  X ", "play"
-    G "485", "OOOXX  X ", "lose"
-    G "486", "OOOX X X ", "lose"
-    G "487", "OOOX  XX ", "lose"
-    G "489", "OOOX   XX", "lose"
-    G "492", "OXOXO   X", "play"
-    G "495", "OOOXX   X", "lose"
-    G "496", "OOOX X  X", "lose"
-    G "497", "OOOX  X X", "lose"
-    G "498", "OOOX   XX", "lose"
-    G "523", "OXX X OO ", "play"
-    G "524", "OX XXO O ", "play"
-    G "526", "OX OXX O ", "play"
-    G "527", "OXO X XO ", "play"
-    G "529", "OXO X  OX", "play"
-    G "532", "OXXOX O  ", "lose"
-    G "534", "O XXXOO  ", "play"
-    G "536", "O XOXXO  ", "lose"
-    G "538", "O XOX OX ", "lose"
-    G "539", "O XOX O X", "lose"
-    G "542", "OX XXO O ", "play"
-    G "543", "O XXXOO  ", "play"
-    G "547", "O OXXOX  ", "play"
-    G "548", "OO XXO X ", "play"
-    G "549", "OO XXO  X", "play"
-    G "562", "OX OXXO  ", "lose"
-    G "563", "O XOXXO  ", "lose"
-    G "567", "O OOXXX  ", "play"
-    G "568", "OO OXX X ", "play"
-    G "569", "O OOXX  X", "play"
-    G "572", "OXO X XO ", "play"
-    G "574", "OOOXX X  ", "lose"
-    G "576", "OOO XXX  ", "lose"
-    G "578", "OOO X XX ", "lose"
-    G "579", "OOO X X X", "lose"
-    G "583", "OOX X OX ", "play"
-    G "584", "OOOXX  X ", "lose"
-    G "586", "OOO XX X ", "lose"
-    G "587", "OOO X XX ", "lose"
-    G "589", "OOO X  XX", "lose"
-    G "592", "OXO X  OX", "play"
-    G "594", "OOOXX   X", "lose"
-    G "596", "OOO XX  X", "lose"
-    G "597", "OOO X X X", "lose"
-    G "598", "OOO X  XX", "lose"
-    G "612", "XXOOOX   ", "play"
-    G "615", "X OOXX  O", "play"
-    G "617", "X OOOXX  ", "play"
-    G "618", "X OOOX X ", "play"
-    G "619", "X OOOX  X", "play"
-    G "621", "XXOOOX   ", "play"
-    G "625", " XOOXX O ", "play"
-    G "627", " XOOOXX  ", "play"
-    G "628", " XOOOX X ", "play"
-    G "629", " XOO XO X", "play"
-    G "641", "X OXOXO  ", "lose"
-    G "642", "OXOXOX   ", "play"
-    G "647", "O OXOXX  ", "play"
-    G "648", "O OXOX X ", "play"
-    G "649", "O OXOX  X", "play"
-    G "651", "X OOXX  O", "play"
-    G "652", " XOOXX O ", "play"
-    G "657", "O OOXXX  ", "play"
-    G "658", " OOOXX X ", "play"
-    G "659", "O OOXX  X", "play"
-    G "672", "OXO OXX  ", "play"
-    G "674", "OOOX XX  ", "lose"
-    G "675", "OOO XXX  ", "lose"
-    G "678", "OOO  XXX ", "lose"
-    G "679", "OOO  XX X", "lose"
-    G "682", "OXO OX X ", "play"
-    G "684", "OOOX X X ", "lose"
-    G "685", "OOO XX X ", "lose"
-    G "687", "OOO  XXX ", "lose"
-    G "689", "OOO  X XX", "lose"
-    G "692", "OXO  XO X", "play"
-    G "694", "OOOX X  X", "lose"
+    G U("1509 57 50 32 55"), "OX  O XOX", "play", U("1509 55 57 50")
+    G U("1509 57 50 32 56"), "OX  O OXX", "play", U("1509 56 57 50")
+    G U("1509 49 51 32 52"), "XOXXO  O ", "lose", U("")
+    G U("1509 49 51 32 54"), "XOX OX O ", "lose", U("")
+    G U("1509 49 51 32 55"), "XOXOO X  ", "play", U("1509 55 49 51")
+    G U("1509 49 51 32 56"), "XOXOO  X ", "play", U("1509 56 49 51")
+    G U("1509 49 51 32 57"), "XOX OO  X", "play", U("1509 57 49 51")
+    G U("1509 50 51 32 52"), "OXXXO   O", "lose", U("")
+    G U("1509 50 51 32 54"), "OXX OX  O", "lose", U("")
+    G U("1509 50 51 32 55"), "OXXOO X  ", "play", U("1509 55 50 51")
+    G U("1509 50 51 32 56"), "OXXOO  X ", "play", U("1509 56 50 51")
+    G U("1509 50 51 32 57"), "OXX OO  X", "play", U("1509 57 50 51")
+    G U("1509 52 51 32 50"), "OXXXO   O", "lose", U("")
+    G U("1509 52 51 32 54"), "O XXOX  O", "lose", U("")
+    G U("1509 52 51 32 55"), "OOXXO X  ", "play", U("1509 55 52 51")
+    G U("1509 52 51 32 56"), "O XXO  XO", "lose", U("")
+    G U("1509 52 51 32 57"), "O XXOO  X", "play", U("1509 57 52 51")
+    G U("1509 54 51 32 49"), "XOX OX  O", "play", U("1509 49 54 51")
+    G U("1509 54 51 32 50"), "OXX OX  O", "lose", U("")
+    G U("1509 54 51 32 52"), "O XXOX  O", "lose", U("")
+    G U("1509 54 51 32 55"), "O X OXX O", "lose", U("")
+    G U("1509 54 51 32 56"), "O X OX XO", "lose", U("")
+    G U("1509 55 51 32 49"), "XOXOO X  ", "play", U("1509 49 55 51")
+    G U("1509 55 51 32 52"), "OOXXO X  ", "play", U("1509 52 55 51")
+    G U("1509 55 51 32 54"), " OX OXXO ", "lose", U("")
+    G U("1509 55 51 32 56"), " OX O XXO", "play", U("1509 56 55 51")
+    G U("1509 55 51 32 57"), " OX O XOX", "lose", U("")
+    G U("1509 56 51 32 49"), "X XOOO X ", "lose", U("")
+    G U("1509 56 51 32 50"), "OXXOO  X ", "play", U("1509 50 56 51")
+    G U("1509 56 51 32 54"), "  XOOX XO", "play", U("1509 54 56 51")
+    G U("1509 56 51 32 55"), "  XOOOXX ", "lose", U("")
+    G U("1509 56 51 32 57"), "  XOOO XX", "lose", U("")
+    G U("1509 57 51 32 49"), "XOX OO  X", "play", U("1509 49 57 51")
+    G U("1509 57 51 32 50"), " XXOOO  X", "lose", U("")
+    G U("1509 57 51 32 52"), "O XXOO  X", "play", U("1509 52 57 51")
+    G U("1509 57 51 32 55"), "  XOOOX X", "lose", U("")
+    G U("1509 57 51 32 56"), "  XOOO XX", "lose", U("")
+    G U("1509 50 52 32 51"), "OXXXO   O", "lose", U("")
+    G U("1509 50 52 32 54"), "OXOXOX   ", "play", U("1509 54 50 52")
+    G U("1509 50 52 32 55"), "OX XO X O", "lose", U("")
+    G U("1509 50 52 32 56"), "OXOXO  X ", "play", U("1509 56 50 52")
+    G U("1509 50 52 32 57"), "OXOXO   X", "play", U("1509 57 50 52")
+    G U("1509 51 52 32 50"), "OXXXO   O", "lose", U("")
+    G U("1509 51 52 32 54"), "O XXOX  O", "lose", U("")
+    G U("1509 51 52 32 55"), "OOXXO X  ", "play", U("1509 55 51 52")
+    G U("1509 51 52 32 56"), "O XXO  XO", "lose", U("")
+    G U("1509 51 52 32 57"), "O XXOO  X", "play", U("1509 57 51 52")
+    G U("1509 53 52 32 50"), "OX XXO O ", "play", U("1509 50 53 52")
+    G U("1509 53 52 32 51"), "O XXXOO  ", "play", U("1509 51 53 52")
+    G U("1509 53 52 32 55"), "O OXXOX  ", "play", U("1509 55 53 52")
+    G U("1509 53 52 32 56"), "OO XXO X ", "play", U("1509 56 53 52")
+    G U("1509 53 52 32 57"), "OO XXO  X", "play", U("1509 57 53 52")
+    G U("1509 54 52 32 50"), "OXOXOX   ", "play", U("1509 50 54 52")
+    G U("1509 54 52 32 51"), "O XXOX  O", "lose", U("")
+    G U("1509 54 52 32 55"), "OO XOXX  ", "play", U("1509 55 54 52")
+    G U("1509 54 52 32 56"), "OO XOX X ", "play", U("1509 56 54 52")
+    G U("1509 54 52 32 57"), "O OXOX  X", "play", U("1509 57 54 52")
+    G U("1509 55 52 32 51"), "OOXXO X  ", "play", U("1509 51 55 52")
+    G U("1509 55 52 32 53"), "OOOXX X  ", "lose", U("")
+    G U("1509 55 52 32 54"), "OOOX XX  ", "lose", U("")
+    G U("1509 55 52 32 56"), "OOOX  XX ", "lose", U("")
+    G U("1509 55 52 32 57"), "OOOX  X X", "lose", U("")
+    G U("1509 56 52 32 50"), "OXOXO  X ", "play", U("1509 50 56 52")
+    G U("1509 56 52 32 53"), "OOOXX  X ", "lose", U("")
+    G U("1509 56 52 32 54"), "OOOX X X ", "lose", U("")
+    G U("1509 56 52 32 55"), "OOOX  XX ", "lose", U("")
+    G U("1509 56 52 32 57"), "OOOX   XX", "lose", U("")
+    G U("1509 57 52 32 50"), "OXOXO   X", "play", U("1509 50 57 52")
+    G U("1509 57 52 32 53"), "OOOXX   X", "lose", U("")
+    G U("1509 57 52 32 54"), "OOOX X  X", "lose", U("")
+    G U("1509 57 52 32 55"), "OOOX  X X", "lose", U("")
+    G U("1509 57 52 32 56"), "OOOX   XX", "lose", U("")
+    G U("1509 50 53 32 51"), "OXX X OO ", "play", U("1509 51 50 53")
+    G U("1509 50 53 32 52"), "OX XXO O ", "play", U("1509 52 50 53")
+    G U("1509 50 53 32 54"), "OX OXX O ", "play", U("1509 54 50 53")
+    G U("1509 50 53 32 55"), "OXO X XO ", "play", U("1509 55 50 53")
+    G U("1509 50 53 32 57"), "OXO X  OX", "play", U("1509 57 50 53")
+    G U("1509 51 53 32 50"), "OXXOX O  ", "lose", U("")
+    G U("1509 51 53 32 52"), "O XXXOO  ", "play", U("1509 52 51 53")
+    G U("1509 51 53 32 54"), "O XOXXO  ", "lose", U("")
+    G U("1509 51 53 32 56"), "O XOX OX ", "lose", U("")
+    G U("1509 51 53 32 57"), "O XOX O X", "lose", U("")
+    G U("1509 52 53 32 50"), "OX XXO O ", "play", U("1509 50 52 53")
+    G U("1509 52 53 32 51"), "O XXXOO  ", "play", U("1509 51 52 53")
+    G U("1509 52 53 32 55"), "O OXXOX  ", "play", U("1509 55 52 53")
+    G U("1509 52 53 32 56"), "OO XXO X ", "play", U("1509 56 52 53")
+    G U("1509 52 53 32 57"), "OO XXO  X", "play", U("1509 57 52 53")
+    G U("1509 54 53 32 50"), "OX OXXO  ", "lose", U("")
+    G U("1509 54 53 32 51"), "O XOXXO  ", "lose", U("")
+    G U("1509 54 53 32 55"), "O OOXXX  ", "play", U("1509 55 54 53")
+    G U("1509 54 53 32 56"), "OO OXX X ", "play", U("1509 56 54 53")
+    G U("1509 54 53 32 57"), "O OOXX  X", "play", U("1509 57 54 53")
+    G U("1509 55 53 32 50"), "OXO X XO ", "play", U("1509 50 55 53")
+    G U("1509 55 53 32 52"), "OOOXX X  ", "lose", U("")
+    G U("1509 55 53 32 54"), "OOO XXX  ", "lose", U("")
+    G U("1509 55 53 32 56"), "OOO X XX ", "lose", U("")
+    G U("1509 55 53 32 57"), "OOO X X X", "lose", U("")
+    G U("1509 56 53 32 51"), "OOX X OX ", "play", U("1509 51 56 53")
+    G U("1509 56 53 32 52"), "OOOXX  X ", "lose", U("")
+    G U("1509 56 53 32 54"), "OOO XX X ", "lose", U("")
+    G U("1509 56 53 32 55"), "OOO X XX ", "lose", U("")
+    G U("1509 56 53 32 57"), "OOO X  XX", "lose", U("")
+    G U("1509 57 53 32 50"), "OXO X  OX", "play", U("1509 50 57 53")
+    G U("1509 57 53 32 52"), "OOOXX   X", "lose", U("")
+    G U("1509 57 53 32 54"), "OOO XX  X", "lose", U("")
+    G U("1509 57 53 32 55"), "OOO X X X", "lose", U("")
+    G U("1509 57 53 32 56"), "OOO X  XX", "lose", U("")
+    G U("1509 49 54 32 50"), "XXOOOX   ", "play", U("1509 50 49 54")
+    G U("1509 49 54 32 53"), "X OOXX  O", "play", U("1509 53 49 54")
+    G U("1509 49 54 32 55"), "X OOOXX  ", "play", U("1509 55 49 54")
+    G U("1509 49 54 32 56"), "X OOOX X ", "play", U("1509 56 49 54")
+    G U("1509 49 54 32 57"), "X OOOX  X", "play", U("1509 57 49 54")
+    G U("1509 50 54 32 49"), "XXOOOX   ", "play", U("1509 49 50 54")
+    G U("1509 50 54 32 53"), " XOOXX O ", "play", U("1509 53 50 54")
+    G U("1509 50 54 32 55"), " XOOOXX  ", "play", U("1509 55 50 54")
+    G U("1509 50 54 32 56"), " XOOOX X ", "play", U("1509 56 50 54")
+    G U("1509 50 54 32 57"), " XOO XO X", "play", U("1509 57 50 54")
+    G U("1509 52 54 32 49"), "X OXOXO  ", "lose", U("")
+    G U("1509 52 54 32 50"), "OXOXOX   ", "play", U("1509 50 52 54")
+    G U("1509 52 54 32 55"), "O OXOXX  ", "play", U("1509 55 52 54")
+    G U("1509 52 54 32 56"), "O OXOX X ", "play", U("1509 56 52 54")
+    G U("1509 52 54 32 57"), "O OXOX  X", "play", U("1509 57 52 54")
+    G U("1509 53 54 32 49"), "X OOXX  O", "play", U("1509 49 53 54")
+    G U("1509 53 54 32 50"), " XOOXX O ", "play", U("1509 50 53 54")
+    G U("1509 53 54 32 55"), "O OOXXX  ", "play", U("1509 55 53 54")
+    G U("1509 53 54 32 56"), " OOOXX X ", "play", U("1509 56 53 54")
+    G U("1509 53 54 32 57"), "O OOXX  X", "play", U("1509 57 53 54")
+    G U("1509 55 54 32 50"), "OXO OXX  ", "play", U("1509 50 55 54")
+    G U("1509 55 54 32 52"), "OOOX XX  ", "lose", U("")
+    G U("1509 55 54 32 53"), "OOO XXX  ", "lose", U("")
+    G U("1509 55 54 32 56"), "OOO  XXX ", "lose", U("")
+    G U("1509 55 54 32 57"), "OOO  XX X", "lose", U("")
+    G U("1509 56 54 32 50"), "OXO OX X ", "play", U("1509 50 56 54")
+    G U("1509 56 54 32 52"), "OOOX X X ", "lose", U("")
+    G U("1509 56 54 32 53"), "OOO XX X ", "lose", U("")
+    G U("1509 56 54 32 55"), "OOO  XXX ", "lose", U("")
+    G U("1509 56 54 32 57"), "OOO  X XX", "lose", U("")
+    G U("1509 57 54 32 50"), "OXO  XO X", "play", U("1509 50 57 54")
+    G U("1509 57 54 32 52"), "OOOX X  X", "lose", U("")
+    G U("1509 57 54 32 53"), "OOO XX  X", "lose", U("")
 End Sub
 
 Private Sub InstallGame3()
-    G "695", "OOO XX  X", "lose"
-    G "697", "OOO  XX X", "lose"
-    G "698", "OOO  X XX", "lose"
-    G "712", "XX OOOX  ", "lose"
-    G "713", "XOXOO X  ", "play"
-    G "716", "XO OOXX  ", "play"
-    G "718", "X  OOOXX ", "lose"
-    G "719", "X  OOOX X", "lose"
-    G "723", "OXXOO X  ", "play"
-    G "724", "OX XO X O", "lose"
-    G "726", "OX  OXX O", "lose"
-    G "728", "OX  O XXO", "lose"
-    G "729", "OX  O XOX", "play"
-    G "731", "XOXOO X  ", "play"
-    G "734", "OOXXO X  ", "play"
-    G "736", " OX OXXO ", "lose"
-    G "738", " OX O XXO", "play"
-    G "739", " OX O XOX", "lose"
-    G "742", "OX XO X O", "lose"
-    G "743", "OOXXO X  ", "play"
-    G "746", "OO XOXX  ", "play"
-    G "748", "O  XO XXO", "lose"
-    G "749", "O  XO XOX", "play"
-    G "761", "XO  OXXO ", "lose"
-    G "763", " OX OXXO ", "lose"
-    G "764", "OO XOXX  ", "play"
-    G "768", " O  OXXXO", "play"
-    G "769", " O  OXXOX", "lose"
-    G "781", "X  OO XXO", "play"
-    G "782", "OX  O XXO", "lose"
-    G "783", "O X O XXO", "lose"
-    G "784", "O  XO XXO", "lose"
-    G "786", "O   OXXXO", "lose"
-    G "791", "XO  O XOX", "lose"
-    G "792", "OX  O XOX", "play"
-    G "793", " OX O XOX", "lose"
-    G "794", " O XO XOX", "lose"
-    G "796", " O  OXXOX", "lose"
-    G "813", "XOX O OX ", "play"
-    G "814", "XO XO OX ", "play"
-    G "815", "XO  X OXO", "play"
-    G "816", "XO  OXOX ", "play"
-    G "819", "XO  O OXX", "play"
-    G "831", "XOX O OX ", "play"
-    G "834", " OXXO OX ", "play"
-    G "835", "OOX X OX ", "play"
-    G "836", " OX  XOXO", "play"
-    G "839", " OX  OOXX", "play"
-    G "841", "XO XO OX ", "play"
-    G "843", " OXXO OX ", "play"
-    G "845", " O XXOOX ", "play"
-    G "846", " O XOXOX ", "play"
-    G "849", " OOX  OXX", "play"
-    G "853", "OOX X OX ", "play"
-    G "854", "OOOXX  X ", "lose"
-    G "856", "OOO XX X ", "lose"
-    G "857", "OOO X XX ", "lose"
-    G "859", "OOO X  XX", "lose"
-    G "861", "XO  OXOX ", "play"
-    G "863", " OX  XOXO", "play"
-    G "864", " O XOXOX ", "play"
-    G "865", " O OXXOX ", "play"
-    G "869", " OO  XOXX", "play"
-    G "871", "XO O  XXO", "play"
-    G "873", " OX O XXO", "play"
-    G "874", "OO X  XXO", "play"
-    G "875", " OO X XXO", "play"
-    G "876", "OO   XXXO", "play"
-    G "891", "XO  O OXX", "play"
-    G "893", " OX  OOXX", "play"
-    G "894", " OOX  OXX", "play"
-    G "895", "OO  X OXX", "play"
-    G "896", " OO  XOXX", "play"
-    G "913", "XOX OO  X", "play"
-    G "914", "XO XO O X", "play"
-    G "916", "XOO OX  X", "play"
-    G "917", "XO  O XOX", "lose"
-    G "918", "XO  O OXX", "play"
-    G "923", "OXX OO  X", "play"
-    G "924", "OXOXO   X", "play"
-    G "926", "OXO OX  X", "play"
-    G "927", "OX  O XOX", "play"
-    G "928", "OX  O OXX", "play"
-    G "931", "XOX OO  X", "play"
-    G "932", " XXOOO  X", "lose"
-    G "934", "O XXOO  X", "play"
-    G "937", "  XOOOX X", "lose"
-    G "938", "  XOOO XX", "lose"
-    G "942", "OXOXO   X", "play"
-    G "943", "O XXOO  X", "play"
-    G "946", "O OXOX  X", "play"
-    G "947", "O  XO XOX", "play"
-    G "948", "O  XO OXX", "play"
-    G "961", "XOO OX  X", "play"
-    G "962", " XO OXO X", "lose"
-    G "964", "O OXOX  X", "play"
-    G "967", "  O OXXOX", "play"
-    G "968", "  O OXOXX", "lose"
-    G "971", "XO  O XOX", "lose"
-    G "972", "OX  O XOX", "play"
-    G "973", " OX O XOX", "lose"
-    G "974", " O XO XOX", "lose"
-    G "976", " O  OXXOX", "lose"
-    G "981", "X O O OXX", "lose"
-    G "982", "OX  O OXX", "play"
-    G "983", "  X OOOXX", "play"
-    G "984", "  OXO OXX", "lose"
-    G "986", "  O OXOXX", "lose"
-    G "1276", "XXOOOXXO ", "play"
-    G "1278", "XXOOOOXX ", "lose"
-    G "1279", "XXOOOOX X", "lose"
-    G "1286", "XXOOOXOX ", "lose"
-    G "1287", "XXOOOOXX ", "lose"
-    G "1289", "XXOOOO XX", "lose"
-    G "1296", "XXOOOXO X", "lose"
-    G "1297", "XXOOOOX X", "lose"
-    G "1298", "XXOOOO XX", "lose"
-    G "1376", "XOXOOXXO ", "lose"
-    G "1378", "XOXOOOXX ", "lose"
-    G "1379", "XOXOOOX X", "lose"
-    G "1386", "XOXOOX XO", "play"
-    G "1387", "XOXOOOXX ", "lose"
-    G "1389", "XOXOOO XX", "lose"
-    G "1394", "XOXXOO OX", "lose"
-    G "1397", "XOXOOOX X", "lose"
-    G "1398", "XOXOOO XX", "lose"
-    G "1436", "XOXXOXOO ", "lose"
-    G "1438", "XOXXOOOX ", "play"
-    G "1439", "XOXXO OOX", "lose"
-    G "1463", "XOXXOXOO ", "lose"
-    G "1468", "XOOXOXOX ", "lose"
-    G "1469", "XOOXOXO X", "lose"
-    G "1493", "XOXXO OOX", "lose"
-    G "1496", "XOOXOXO X", "lose"
-    G "1498", "XOOXO OXX", "lose"
-    G "1643", "XOXXOXOO ", "lose"
-    G "1648", "XOOXOXOX ", "lose"
-    G "1649", "XOOXOXO X", "lose"
-    G "1683", "XOX OXOXO", "play"
-    G "1684", "XOOXOXOX ", "lose"
+    G U("1509 57 54 32 55"), "OOO  XX X", "lose", U("")
+    G U("1509 57 54 32 56"), "OOO  X XX", "lose", U("")
+    G U("1509 49 55 32 50"), "XX OOOX  ", "lose", U("")
+    G U("1509 49 55 32 51"), "XOXOO X  ", "play", U("1509 51 49 55")
+    G U("1509 49 55 32 54"), "XO OOXX  ", "play", U("1509 54 49 55")
+    G U("1509 49 55 32 56"), "X  OOOXX ", "lose", U("")
+    G U("1509 49 55 32 57"), "X  OOOX X", "lose", U("")
+    G U("1509 50 55 32 51"), "OXXOO X  ", "play", U("1509 51 50 55")
+    G U("1509 50 55 32 52"), "OX XO X O", "lose", U("")
+    G U("1509 50 55 32 54"), "OX  OXX O", "lose", U("")
+    G U("1509 50 55 32 56"), "OX  O XXO", "lose", U("")
+    G U("1509 50 55 32 57"), "OX  O XOX", "play", U("1509 57 50 55")
+    G U("1509 51 55 32 49"), "XOXOO X  ", "play", U("1509 49 51 55")
+    G U("1509 51 55 32 52"), "OOXXO X  ", "play", U("1509 52 51 55")
+    G U("1509 51 55 32 54"), " OX OXXO ", "lose", U("")
+    G U("1509 51 55 32 56"), " OX O XXO", "play", U("1509 56 51 55")
+    G U("1509 51 55 32 57"), " OX O XOX", "lose", U("")
+    G U("1509 52 55 32 50"), "OX XO X O", "lose", U("")
+    G U("1509 52 55 32 51"), "OOXXO X  ", "play", U("1509 51 52 55")
+    G U("1509 52 55 32 54"), "OO XOXX  ", "play", U("1509 54 52 55")
+    G U("1509 52 55 32 56"), "O  XO XXO", "lose", U("")
+    G U("1509 52 55 32 57"), "O  XO XOX", "play", U("1509 57 52 55")
+    G U("1509 54 55 32 49"), "XO  OXXO ", "lose", U("")
+    G U("1509 54 55 32 51"), " OX OXXO ", "lose", U("")
+    G U("1509 54 55 32 52"), "OO XOXX  ", "play", U("1509 52 54 55")
+    G U("1509 54 55 32 56"), " O  OXXXO", "play", U("1509 56 54 55")
+    G U("1509 54 55 32 57"), " O  OXXOX", "lose", U("")
+    G U("1509 56 55 32 49"), "X  OO XXO", "play", U("1509 49 56 55")
+    G U("1509 56 55 32 50"), "OX  O XXO", "lose", U("")
+    G U("1509 56 55 32 51"), "O X O XXO", "lose", U("")
+    G U("1509 56 55 32 52"), "O  XO XXO", "lose", U("")
+    G U("1509 56 55 32 54"), "O   OXXXO", "lose", U("")
+    G U("1509 57 55 32 49"), "XO  O XOX", "lose", U("")
+    G U("1509 57 55 32 50"), "OX  O XOX", "play", U("1509 50 57 55")
+    G U("1509 57 55 32 51"), " OX O XOX", "lose", U("")
+    G U("1509 57 55 32 52"), " O XO XOX", "lose", U("")
+    G U("1509 57 55 32 54"), " O  OXXOX", "lose", U("")
+    G U("1509 49 56 32 51"), "XOX O OX ", "play", U("1509 51 49 56")
+    G U("1509 49 56 32 52"), "XO XO OX ", "play", U("1509 52 49 56")
+    G U("1509 49 56 32 53"), "XO  X OXO", "play", U("1509 53 49 56")
+    G U("1509 49 56 32 54"), "XO  OXOX ", "play", U("1509 54 49 56")
+    G U("1509 49 56 32 57"), "XO  O OXX", "play", U("1509 57 49 56")
+    G U("1509 51 56 32 49"), "XOX O OX ", "play", U("1509 49 51 56")
+    G U("1509 51 56 32 52"), " OXXO OX ", "play", U("1509 52 51 56")
+    G U("1509 51 56 32 53"), "OOX X OX ", "play", U("1509 53 51 56")
+    G U("1509 51 56 32 54"), " OX  XOXO", "play", U("1509 54 51 56")
+    G U("1509 51 56 32 57"), " OX  OOXX", "play", U("1509 57 51 56")
+    G U("1509 52 56 32 49"), "XO XO OX ", "play", U("1509 49 52 56")
+    G U("1509 52 56 32 51"), " OXXO OX ", "play", U("1509 51 52 56")
+    G U("1509 52 56 32 53"), " O XXOOX ", "play", U("1509 53 52 56")
+    G U("1509 52 56 32 54"), " O XOXOX ", "play", U("1509 54 52 56")
+    G U("1509 52 56 32 57"), " OOX  OXX", "play", U("1509 57 52 56")
+    G U("1509 53 56 32 51"), "OOX X OX ", "play", U("1509 51 53 56")
+    G U("1509 53 56 32 52"), "OOOXX  X ", "lose", U("")
+    G U("1509 53 56 32 54"), "OOO XX X ", "lose", U("")
+    G U("1509 53 56 32 55"), "OOO X XX ", "lose", U("")
+    G U("1509 53 56 32 57"), "OOO X  XX", "lose", U("")
+    G U("1509 54 56 32 49"), "XO  OXOX ", "play", U("1509 49 54 56")
+    G U("1509 54 56 32 51"), " OX  XOXO", "play", U("1509 51 54 56")
+    G U("1509 54 56 32 52"), " O XOXOX ", "play", U("1509 52 54 56")
+    G U("1509 54 56 32 53"), " O OXXOX ", "play", U("1509 53 54 56")
+    G U("1509 54 56 32 57"), " OO  XOXX", "play", U("1509 57 54 56")
+    G U("1509 55 56 32 49"), "XO O  XXO", "play", U("1509 49 55 56")
+    G U("1509 55 56 32 51"), " OX O XXO", "play", U("1509 51 55 56")
+    G U("1509 55 56 32 52"), "OO X  XXO", "play", U("1509 52 55 56")
+    G U("1509 55 56 32 53"), " OO X XXO", "play", U("1509 53 55 56")
+    G U("1509 55 56 32 54"), "OO   XXXO", "play", U("1509 54 55 56")
+    G U("1509 57 56 32 49"), "XO  O OXX", "play", U("1509 49 57 56")
+    G U("1509 57 56 32 51"), " OX  OOXX", "play", U("1509 51 57 56")
+    G U("1509 57 56 32 52"), " OOX  OXX", "play", U("1509 52 57 56")
+    G U("1509 57 56 32 53"), "OO  X OXX", "play", U("1509 53 57 56")
+    G U("1509 57 56 32 54"), " OO  XOXX", "play", U("1509 54 57 56")
+    G U("1509 49 57 32 51"), "XOX OO  X", "play", U("1509 51 49 57")
+    G U("1509 49 57 32 52"), "XO XO O X", "play", U("1509 52 49 57")
+    G U("1509 49 57 32 54"), "XOO OX  X", "play", U("1509 54 49 57")
+    G U("1509 49 57 32 55"), "XO  O XOX", "lose", U("")
+    G U("1509 49 57 32 56"), "XO  O OXX", "play", U("1509 56 49 57")
+    G U("1509 50 57 32 51"), "OXX OO  X", "play", U("1509 51 50 57")
+    G U("1509 50 57 32 52"), "OXOXO   X", "play", U("1509 52 50 57")
+    G U("1509 50 57 32 54"), "OXO OX  X", "play", U("1509 54 50 57")
+    G U("1509 50 57 32 55"), "OX  O XOX", "play", U("1509 55 50 57")
+    G U("1509 50 57 32 56"), "OX  O OXX", "play", U("1509 56 50 57")
+    G U("1509 51 57 32 49"), "XOX OO  X", "play", U("1509 49 51 57")
+    G U("1509 51 57 32 50"), " XXOOO  X", "lose", U("")
+    G U("1509 51 57 32 52"), "O XXOO  X", "play", U("1509 52 51 57")
+    G U("1509 51 57 32 55"), "  XOOOX X", "lose", U("")
+    G U("1509 51 57 32 56"), "  XOOO XX", "lose", U("")
+    G U("1509 52 57 32 50"), "OXOXO   X", "play", U("1509 50 52 57")
+    G U("1509 52 57 32 51"), "O XXOO  X", "play", U("1509 51 52 57")
+    G U("1509 52 57 32 54"), "O OXOX  X", "play", U("1509 54 52 57")
+    G U("1509 52 57 32 55"), "O  XO XOX", "play", U("1509 55 52 57")
+    G U("1509 52 57 32 56"), "O  XO OXX", "play", U("1509 56 52 57")
+    G U("1509 54 57 32 49"), "XOO OX  X", "play", U("1509 49 54 57")
+    G U("1509 54 57 32 50"), " XO OXO X", "lose", U("")
+    G U("1509 54 57 32 52"), "O OXOX  X", "play", U("1509 52 54 57")
+    G U("1509 54 57 32 55"), "  O OXXOX", "play", U("1509 55 54 57")
+    G U("1509 54 57 32 56"), "  O OXOXX", "lose", U("")
+    G U("1509 55 57 32 49"), "XO  O XOX", "lose", U("")
+    G U("1509 55 57 32 50"), "OX  O XOX", "play", U("1509 50 55 57")
+    G U("1509 55 57 32 51"), " OX O XOX", "lose", U("")
+    G U("1509 55 57 32 52"), " O XO XOX", "lose", U("")
+    G U("1509 55 57 32 54"), " O  OXXOX", "lose", U("")
+    G U("1509 56 57 32 49"), "X O O OXX", "lose", U("")
+    G U("1509 56 57 32 50"), "OX  O OXX", "play", U("1509 50 56 57")
+    G U("1509 56 57 32 51"), "  X OOOXX", "play", U("1509 51 56 57")
+    G U("1509 56 57 32 52"), "  OXO OXX", "lose", U("")
+    G U("1509 56 57 32 54"), "  O OXOXX", "lose", U("")
+    G U("1509 55 50 49 32 54"), "XXOOOXXO ", "play", U("1509 54 55 50 49")
+    G U("1509 55 50 49 32 56"), "XXOOOOXX ", "lose", U("")
+    G U("1509 55 50 49 32 57"), "XXOOOOX X", "lose", U("")
+    G U("1509 56 50 49 32 54"), "XXOOOXOX ", "lose", U("")
+    G U("1509 56 50 49 32 55"), "XXOOOOXX ", "lose", U("")
+    G U("1509 56 50 49 32 57"), "XXOOOO XX", "lose", U("")
+    G U("1509 57 50 49 32 54"), "XXOOOXO X", "lose", U("")
+    G U("1509 57 50 49 32 55"), "XXOOOOX X", "lose", U("")
+    G U("1509 57 50 49 32 56"), "XXOOOO XX", "lose", U("")
+    G U("1509 55 51 49 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 55 51 49 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 55 51 49 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 56 51 49 32 54"), "XOXOOX XO", "play", U("1509 54 56 51 49")
+    G U("1509 56 51 49 32 55"), "XOXOOOXX ", "lose", U("")
+    G U("1509 56 51 49 32 57"), "XOXOOO XX", "lose", U("")
+    G U("1509 57 51 49 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 57 51 49 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 57 51 49 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 51 52 49 32 54"), "XOXXOXOO ", "lose", U("")
+    G U("1509 51 52 49 32 56"), "XOXXOOOX ", "play", U("1509 56 51 52 49")
+    G U("1509 51 52 49 32 57"), "XOXXO OOX", "lose", U("")
+    G U("1509 54 52 49 32 51"), "XOXXOXOO ", "lose", U("")
+    G U("1509 54 52 49 32 56"), "XOOXOXOX ", "lose", U("")
+    G U("1509 54 52 49 32 57"), "XOOXOXO X", "lose", U("")
+    G U("1509 57 52 49 32 51"), "XOXXO OOX", "lose", U("")
+    G U("1509 57 52 49 32 54"), "XOOXOXO X", "lose", U("")
+    G U("1509 57 52 49 32 56"), "XOOXO OXX", "lose", U("")
+    G U("1509 52 54 49 32 51"), "XOXXOXOO ", "lose", U("")
+    G U("1509 52 54 49 32 56"), "XOOXOXOX ", "lose", U("")
+    G U("1509 52 54 49 32 57"), "XOOXOXO X", "lose", U("")
+    G U("1509 56 54 49 32 51"), "XOX OXOXO", "play", U("1509 51 56 54 49")
+    G U("1509 56 54 49 32 52"), "XOOXOXOX ", "lose", U("")
+    G U("1509 56 54 49 32 57"), "XOO OXOXX", "lose", U("")
 End Sub
 
 Private Sub InstallGame4()
-    G "1689", "XOO OXOXX", "lose"
-    G "1694", "XOOXOXO X", "lose"
-    G "1697", "XOO OXXOX", "lose"
-    G "1698", "XOO OXOXX", "lose"
-    G "1736", "XOXOOXXO ", "lose"
-    G "1738", "XOXOOOXX ", "lose"
-    G "1739", "XOXOOOX X", "lose"
-    G "1763", "XOXOOXXO ", "lose"
-    G "1768", "XO OOXXXO", "play"
-    G "1769", "XO OOXXOX", "lose"
-    G "1826", "XXOOOXOX ", "lose"
-    G "1827", "XXOOOOXX ", "lose"
-    G "1829", "XXOOOO XX", "lose"
-    G "1862", "XXOOOXOX ", "lose"
-    G "1867", "X OOOXXXO", "play"
-    G "1869", "X OOOXOXX", "lose"
-    G "1934", "XOXXOO OX", "lose"
-    G "1937", "XOXOOOX X", "lose"
-    G "1938", "XOXOOO XX", "lose"
-    G "1943", "XOXXO OOX", "lose"
-    G "1946", "XOOXOXO X", "lose"
-    G "1948", "XOOXO OXX", "lose"
-    G "1964", "XOOXOXO X", "lose"
-    G "1967", "XOO OXXOX", "lose"
-    G "1968", "XOO OXOXX", "lose"
-    G "1983", "XOX OOOXX", "play"
-    G "1984", "XOOXO OXX", "lose"
-    G "1986", "XOO OXOXX", "lose"
-    G "2376", "OXXOOXX O", "lose"
-    G "2378", "OXXOOOXX ", "lose"
-    G "2379", "OXXOOOX X", "lose"
-    G "2386", "OXXOOXOX ", "lose"
-    G "2387", "OXXOOOXX ", "lose"
-    G "2389", "OXXOOO XX", "lose"
-    G "2395", "OXXOXOO X", "lose"
-    G "2397", "OXXOOOX X", "lose"
-    G "2398", "OXXOOO XX", "lose"
-    G "2467", "OXOXOXX O", "lose"
-    G "2468", "OXOXOXOX ", "lose"
-    G "2469", "OXOXOXO X", "lose"
-    G "2486", "OXOXOXOX ", "lose"
-    G "2487", "OXOXO XXO", "lose"
-    G "2489", "OXOXO OXX", "lose"
-    G "2496", "OXOXOXO X", "lose"
-    G "2497", "OXOXO XOX", "play"
-    G "2498", "OXOXO OXX", "lose"
-    G "2534", "OXXXX OOO", "lose"
-    G "2536", "OXXOXXOO ", "lose"
-    G "2539", "OXXOX OOX", "lose"
-    G "2543", "OXXXXOOO ", "play"
-    G "2547", "OXOXXOXO ", "play"
-    G "2549", "OXOXXO OX", "play"
-    G "2563", "OXXOXXOO ", "lose"
-    G "2567", "OXOOXXXO ", "play"
-    G "2569", "OX OXXOOX", "lose"
-    G "2574", "OXOXXOXO ", "play"
-    G "2576", "OXOOXXXO ", "play"
-    G "2579", "OXOOX XOX", "play"
-    G "2594", "OXOXXO OX", "play"
-    G "2596", "OXOOXX OX", "play"
-    G "2597", "OXOOX XOX", "play"
-    G "2643", "OXXXOXO O", "lose"
-    G "2648", "OXOXOXOX ", "lose"
-    G "2649", "OXOXOXO X", "lose"
-    G "2694", "OXOXOXO X", "lose"
-    G "2695", "OXOOXXO X", "lose"
-    G "2698", "OXOO XOXX", "lose"
-    G "2736", "OXXOOXX O", "lose"
-    G "2738", "OXXOOOXX ", "lose"
-    G "2739", "OXXOOOX X", "lose"
-    G "2793", "OXX OOXOX", "play"
-    G "2794", "OXOXO XOX", "play"
-    G "2796", "OXO OXXOX", "play"
-    G "2836", "OXXOOXOX ", "lose"
-    G "2837", "OXXOOOXX ", "lose"
-    G "2839", "OXXOOO XX", "lose"
-    G "2846", "OXOXOXOX ", "lose"
-    G "2847", "OXOXO XXO", "lose"
-    G "2849", "OXOXO OXX", "lose"
-    G "2864", "OXOXOXOX ", "lose"
-    G "2867", "OXO OXXXO", "lose"
-    G "2869", "OXO OXOXX", "lose"
-    G "2893", "OXXOO OXX", "lose"
-    G "2894", "OXOXO OXX", "lose"
-    G "2896", "OXO OXOXX", "lose"
-    G "2934", "OXXXOOO X", "play"
-    G "2937", "OXXOOOX X", "lose"
-    G "2938", "OXXOOO XX", "lose"
-    G "2946", "OXOXOXO X", "lose"
-    G "2947", "OXOXO XOX", "play"
-    G "2948", "OXOXO OXX", "lose"
-    G "2964", "OXOXOXO X", "lose"
-    G "2967", "OXO OXXOX", "play"
-    G "2968", "OXO OXOXX", "lose"
-    G "2973", "OXX OOXOX", "play"
-    G "2974", "OXOXO XOX", "play"
-    G "2976", "OXO OXXOX", "play"
-    G "2983", "OXXOO OXX", "lose"
-    G "2984", "OXOXO OXX", "lose"
-    G "2986", "OXO OXOXX", "lose"
-    G "3176", "XOXOOXXO ", "lose"
-    G "3178", "XOXOOOXX ", "lose"
-    G "3179", "XOXOOOX X", "lose"
-    G "3186", "XOXOOX XO", "play"
-    G "3187", "XOXOOOXX ", "lose"
-    G "3189", "XOXOOO XX", "lose"
-    G "3194", "XOXXOO OX", "lose"
-    G "3197", "XOXOOOX X", "lose"
-    G "3198", "XOXOOO XX", "lose"
-    G "3276", "OXXOOXX O", "lose"
-    G "3278", "OXXOOOXX ", "lose"
-    G "3279", "OXXOOOX X", "lose"
-    G "3286", "OXXOOXOX ", "lose"
-    G "3287", "OXXOOOXX ", "lose"
-    G "3289", "OXXOOO XX", "lose"
-    G "3294", "OXXXOOO X", "play"
-    G "3297", "OXXOOOX X", "lose"
-    G "3298", "OXXOOO XX", "lose"
-    G "3476", "OOXXOXXO ", "lose"
-    G "3478", "OOXXO XXO", "lose"
-    G "3479", "OOXXO XOX", "lose"
-    G "3492", "OXXXOOO X", "play"
-    G "3497", "O XXOOXOX", "play"
-    G "3498", "O XXOOOXX", "play"
-    G "3614", "XOXXOX OO", "lose"
-    G "3617", "XOX OXXOO", "lose"
-    G "3618", "XOXOOX XO", "play"
-    G "3716", "XOXOOXXO ", "lose"
-    G "3718", "XOXOOOXX ", "lose"
-    G "3719", "XOXOOOX X", "lose"
-    G "3746", "OOXXOXXO ", "lose"
-    G "3748", "OOXXO XXO", "lose"
-    G "3749", "OOXXO XOX", "lose"
-    G "3781", "XOXOO XXO", "play"
-    G "3784", "OOXXO XXO", "lose"
-    G "3786", "OOX OXXXO", "lose"
-    G "3826", "OXXOOXOX ", "lose"
-    G "3827", "OXXOOOXX ", "lose"
-    G "3829", "OXXOOO XX", "lose"
-    G "3861", "XOXOOX XO", "play"
+    G U("1509 57 54 49 32 52"), "XOOXOXO X", "lose", U("")
+    G U("1509 57 54 49 32 55"), "XOO OXXOX", "lose", U("")
+    G U("1509 57 54 49 32 56"), "XOO OXOXX", "lose", U("")
+    G U("1509 51 55 49 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 51 55 49 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 51 55 49 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 54 55 49 32 51"), "XOXOOXXO ", "lose", U("")
+    G U("1509 54 55 49 32 56"), "XO OOXXXO", "play", U("1509 56 54 55 49")
+    G U("1509 54 55 49 32 57"), "XO OOXXOX", "lose", U("")
+    G U("1509 50 56 49 32 54"), "XXOOOXOX ", "lose", U("")
+    G U("1509 50 56 49 32 55"), "XXOOOOXX ", "lose", U("")
+    G U("1509 50 56 49 32 57"), "XXOOOO XX", "lose", U("")
+    G U("1509 54 56 49 32 50"), "XXOOOXOX ", "lose", U("")
+    G U("1509 54 56 49 32 55"), "X OOOXXXO", "play", U("1509 55 54 56 49")
+    G U("1509 54 56 49 32 57"), "X OOOXOXX", "lose", U("")
+    G U("1509 51 57 49 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 51 57 49 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 51 57 49 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 52 57 49 32 51"), "XOXXO OOX", "lose", U("")
+    G U("1509 52 57 49 32 54"), "XOOXOXO X", "lose", U("")
+    G U("1509 52 57 49 32 56"), "XOOXO OXX", "lose", U("")
+    G U("1509 54 57 49 32 52"), "XOOXOXO X", "lose", U("")
+    G U("1509 54 57 49 32 55"), "XOO OXXOX", "lose", U("")
+    G U("1509 54 57 49 32 56"), "XOO OXOXX", "lose", U("")
+    G U("1509 56 57 49 32 51"), "XOX OOOXX", "play", U("1509 51 56 57 49")
+    G U("1509 56 57 49 32 52"), "XOOXO OXX", "lose", U("")
+    G U("1509 56 57 49 32 54"), "XOO OXOXX", "lose", U("")
+    G U("1509 55 51 50 32 54"), "OXXOOXX O", "lose", U("")
+    G U("1509 55 51 50 32 56"), "OXXOOOXX ", "lose", U("")
+    G U("1509 55 51 50 32 57"), "OXXOOOX X", "lose", U("")
+    G U("1509 56 51 50 32 54"), "OXXOOXOX ", "lose", U("")
+    G U("1509 56 51 50 32 55"), "OXXOOOXX ", "lose", U("")
+    G U("1509 56 51 50 32 57"), "OXXOOO XX", "lose", U("")
+    G U("1509 57 51 50 32 53"), "OXXOXOO X", "lose", U("")
+    G U("1509 57 51 50 32 55"), "OXXOOOX X", "lose", U("")
+    G U("1509 57 51 50 32 56"), "OXXOOO XX", "lose", U("")
+    G U("1509 54 52 50 32 55"), "OXOXOXX O", "lose", U("")
+    G U("1509 54 52 50 32 56"), "OXOXOXOX ", "lose", U("")
+    G U("1509 54 52 50 32 57"), "OXOXOXO X", "lose", U("")
+    G U("1509 56 52 50 32 54"), "OXOXOXOX ", "lose", U("")
+    G U("1509 56 52 50 32 55"), "OXOXO XXO", "lose", U("")
+    G U("1509 56 52 50 32 57"), "OXOXO OXX", "lose", U("")
+    G U("1509 57 52 50 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 52 50 32 55"), "OXOXO XOX", "play", U("1509 55 57 52 50")
+    G U("1509 57 52 50 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 51 53 50 32 52"), "OXXXX OOO", "lose", U("")
+    G U("1509 51 53 50 32 54"), "OXXOXXOO ", "lose", U("")
+    G U("1509 51 53 50 32 57"), "OXXOX OOX", "lose", U("")
+    G U("1509 52 53 50 32 51"), "OXXXXOOO ", "play", U("1509 51 52 53 50")
+    G U("1509 52 53 50 32 55"), "OXOXXOXO ", "play", U("1509 55 52 53 50")
+    G U("1509 52 53 50 32 57"), "OXOXXO OX", "play", U("1509 57 52 53 50")
+    G U("1509 54 53 50 32 51"), "OXXOXXOO ", "lose", U("")
+    G U("1509 54 53 50 32 55"), "OXOOXXXO ", "play", U("1509 55 54 53 50")
+    G U("1509 54 53 50 32 57"), "OX OXXOOX", "lose", U("")
+    G U("1509 55 53 50 32 52"), "OXOXXOXO ", "play", U("1509 52 55 53 50")
+    G U("1509 55 53 50 32 54"), "OXOOXXXO ", "play", U("1509 54 55 53 50")
+    G U("1509 55 53 50 32 57"), "OXOOX XOX", "play", U("1509 57 55 53 50")
+    G U("1509 57 53 50 32 52"), "OXOXXO OX", "play", U("1509 52 57 53 50")
+    G U("1509 57 53 50 32 54"), "OXOOXX OX", "play", U("1509 54 57 53 50")
+    G U("1509 57 53 50 32 55"), "OXOOX XOX", "play", U("1509 55 57 53 50")
+    G U("1509 52 54 50 32 51"), "OXXXOXO O", "lose", U("")
+    G U("1509 52 54 50 32 56"), "OXOXOXOX ", "lose", U("")
+    G U("1509 52 54 50 32 57"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 54 50 32 52"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 54 50 32 53"), "OXOOXXO X", "lose", U("")
+    G U("1509 57 54 50 32 56"), "OXOO XOXX", "lose", U("")
+    G U("1509 51 55 50 32 54"), "OXXOOXX O", "lose", U("")
+    G U("1509 51 55 50 32 56"), "OXXOOOXX ", "lose", U("")
+    G U("1509 51 55 50 32 57"), "OXXOOOX X", "lose", U("")
+    G U("1509 57 55 50 32 51"), "OXX OOXOX", "play", U("1509 51 57 55 50")
+    G U("1509 57 55 50 32 52"), "OXOXO XOX", "play", U("1509 52 57 55 50")
+    G U("1509 57 55 50 32 54"), "OXO OXXOX", "play", U("1509 54 57 55 50")
+    G U("1509 51 56 50 32 54"), "OXXOOXOX ", "lose", U("")
+    G U("1509 51 56 50 32 55"), "OXXOOOXX ", "lose", U("")
+    G U("1509 51 56 50 32 57"), "OXXOOO XX", "lose", U("")
+    G U("1509 52 56 50 32 54"), "OXOXOXOX ", "lose", U("")
+    G U("1509 52 56 50 32 55"), "OXOXO XXO", "lose", U("")
+    G U("1509 52 56 50 32 57"), "OXOXO OXX", "lose", U("")
+    G U("1509 54 56 50 32 52"), "OXOXOXOX ", "lose", U("")
+    G U("1509 54 56 50 32 55"), "OXO OXXXO", "lose", U("")
+    G U("1509 54 56 50 32 57"), "OXO OXOXX", "lose", U("")
+    G U("1509 57 56 50 32 51"), "OXXOO OXX", "lose", U("")
+    G U("1509 57 56 50 32 52"), "OXOXO OXX", "lose", U("")
+    G U("1509 57 56 50 32 54"), "OXO OXOXX", "lose", U("")
+    G U("1509 51 57 50 32 52"), "OXXXOOO X", "play", U("1509 52 51 57 50")
+    G U("1509 51 57 50 32 55"), "OXXOOOX X", "lose", U("")
+    G U("1509 51 57 50 32 56"), "OXXOOO XX", "lose", U("")
+    G U("1509 52 57 50 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 52 57 50 32 55"), "OXOXO XOX", "play", U("1509 55 52 57 50")
+    G U("1509 52 57 50 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 54 57 50 32 52"), "OXOXOXO X", "lose", U("")
+    G U("1509 54 57 50 32 55"), "OXO OXXOX", "play", U("1509 55 54 57 50")
+    G U("1509 54 57 50 32 56"), "OXO OXOXX", "lose", U("")
+    G U("1509 55 57 50 32 51"), "OXX OOXOX", "play", U("1509 51 55 57 50")
+    G U("1509 55 57 50 32 52"), "OXOXO XOX", "play", U("1509 52 55 57 50")
+    G U("1509 55 57 50 32 54"), "OXO OXXOX", "play", U("1509 54 55 57 50")
+    G U("1509 56 57 50 32 51"), "OXXOO OXX", "lose", U("")
+    G U("1509 56 57 50 32 52"), "OXOXO OXX", "lose", U("")
+    G U("1509 56 57 50 32 54"), "OXO OXOXX", "lose", U("")
+    G U("1509 55 49 51 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 55 49 51 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 55 49 51 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 56 49 51 32 54"), "XOXOOX XO", "play", U("1509 54 56 49 51")
+    G U("1509 56 49 51 32 55"), "XOXOOOXX ", "lose", U("")
+    G U("1509 56 49 51 32 57"), "XOXOOO XX", "lose", U("")
+    G U("1509 57 49 51 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 57 49 51 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 57 49 51 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 55 50 51 32 54"), "OXXOOXX O", "lose", U("")
+    G U("1509 55 50 51 32 56"), "OXXOOOXX ", "lose", U("")
+    G U("1509 55 50 51 32 57"), "OXXOOOX X", "lose", U("")
+    G U("1509 56 50 51 32 54"), "OXXOOXOX ", "lose", U("")
+    G U("1509 56 50 51 32 55"), "OXXOOOXX ", "lose", U("")
+    G U("1509 56 50 51 32 57"), "OXXOOO XX", "lose", U("")
+    G U("1509 57 50 51 32 52"), "OXXXOOO X", "play", U("1509 52 57 50 51")
+    G U("1509 57 50 51 32 55"), "OXXOOOX X", "lose", U("")
+    G U("1509 57 50 51 32 56"), "OXXOOO XX", "lose", U("")
+    G U("1509 55 52 51 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 55 52 51 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 55 52 51 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 57 52 51 32 50"), "OXXXOOO X", "play", U("1509 50 57 52 51")
+    G U("1509 57 52 51 32 55"), "O XXOOXOX", "play", U("1509 55 57 52 51")
+    G U("1509 57 52 51 32 56"), "O XXOOOXX", "play", U("1509 56 57 52 51")
+    G U("1509 49 54 51 32 52"), "XOXXOX OO", "lose", U("")
+    G U("1509 49 54 51 32 55"), "XOX OXXOO", "lose", U("")
+    G U("1509 49 54 51 32 56"), "XOXOOX XO", "play", U("1509 56 49 54 51")
+    G U("1509 49 55 51 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 49 55 51 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 49 55 51 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 52 55 51 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 52 55 51 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 52 55 51 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 56 55 51 32 49"), "XOXOO XXO", "play", U("1509 49 56 55 51")
+    G U("1509 56 55 51 32 52"), "OOXXO XXO", "lose", U("")
+    G U("1509 56 55 51 32 54"), "OOX OXXXO", "lose", U("")
+    G U("1509 50 56 51 32 54"), "OXXOOXOX ", "lose", U("")
+    G U("1509 50 56 51 32 55"), "OXXOOOXX ", "lose", U("")
+    G U("1509 50 56 51 32 57"), "OXXOOO XX", "lose", U("")
+    G U("1509 54 56 51 32 49"), "XOXOOX XO", "play", U("1509 49 54 56 51")
+    G U("1509 54 56 51 32 50"), "OXXOOX XO", "lose", U("")
 End Sub
 
 Private Sub InstallGame5()
-    G "3862", "OXXOOX XO", "lose"
-    G "3867", "O XOOXXXO", "lose"
-    G "3914", "XOXXOO OX", "lose"
-    G "3917", "XOXOOOX X", "lose"
-    G "3918", "XOXOOO XX", "lose"
-    G "3942", "OXXXOOO X", "play"
-    G "3947", "O XXOOXOX", "play"
-    G "3948", "O XXOOOXX", "play"
-    G "4267", "OXOXOXX O", "lose"
-    G "4268", "OXOXOXOX ", "lose"
-    G "4269", "OXOXOXO X", "lose"
-    G "4286", "OXOXOXOX ", "lose"
-    G "4287", "OXOXO XXO", "lose"
-    G "4289", "OXOXO OXX", "lose"
-    G "4296", "OXOXOXO X", "lose"
-    G "4297", "OXOXO XOX", "play"
-    G "4298", "OXOXO OXX", "lose"
-    G "4376", "OOXXOXXO ", "lose"
-    G "4378", "OOXXO XXO", "lose"
-    G "4379", "OOXXO XOX", "lose"
-    G "4392", "OXXXOOO X", "play"
-    G "4397", "O XXOOXOX", "play"
-    G "4398", "O XXOOOXX", "play"
-    G "4523", "OXXXXOOO ", "play"
-    G "4527", "OXOXXOXO ", "play"
-    G "4529", "OXOXXO OX", "play"
-    G "4532", "OXXXXOOO ", "play"
-    G "4538", "OOXXXOOX ", "play"
-    G "4539", "OOXXXOO X", "play"
-    G "4572", "OXOXXOX O", "lose"
-    G "4578", "OOOXXOXX ", "lose"
-    G "4579", "OOOXXOX X", "lose"
-    G "4583", "OOXXXOOX ", "play"
-    G "4587", "OOOXXOXX ", "lose"
-    G "4589", "OOOXXO XX", "lose"
-    G "4593", "OOXXXOO X", "play"
-    G "4597", "OOOXXOX X", "lose"
-    G "4598", "OOOXXO XX", "lose"
-    G "4627", "OXOXOXX O", "lose"
-    G "4628", "OXOXOXOX ", "lose"
-    G "4629", "OXOXOXO X", "lose"
-    G "4673", "OOXXOXXO ", "lose"
-    G "4678", "OOOXOXXX ", "lose"
-    G "4679", "OOOXOXX X", "lose"
-    G "4683", "OOXXOX XO", "lose"
-    G "4687", "OOOXOXXX ", "lose"
-    G "4689", "OOOXOX XX", "lose"
-    G "4692", "OXOXOXO X", "lose"
-    G "4697", "OOOXOXX X", "lose"
-    G "4698", "OOOXOX XX", "lose"
-    G "4736", "OOXXOXXO ", "lose"
-    G "4738", "OOXXO XXO", "lose"
-    G "4739", "OOXXO XOX", "lose"
-    G "4826", "OXOXOXOX ", "lose"
-    G "4827", "OXOXO XXO", "lose"
-    G "4829", "OXOXO OXX", "lose"
-    G "4926", "OXOXOXO X", "lose"
-    G "4927", "OXOXO XOX", "play"
-    G "4928", "OXOXO OXX", "lose"
-    G "5234", "OXXXX OOO", "lose"
-    G "5236", "OXXOXXOO ", "lose"
-    G "5239", "OXXOX OOX", "lose"
-    G "5243", "OXXXXOOO ", "play"
-    G "5247", "OXOXXOXO ", "play"
-    G "5249", "OXOXXO OX", "play"
-    G "5263", "OXXOXXOO ", "lose"
-    G "5267", "OXOOXXXO ", "play"
-    G "5269", "OX OXXOOX", "lose"
-    G "5274", "OXOXXOXO ", "play"
-    G "5276", "OXOOXXXO ", "play"
-    G "5279", "OXOOX XOX", "play"
-    G "5294", "OXOXXO OX", "play"
-    G "5296", "OXOOXX OX", "play"
-    G "5297", "OXOOX XOX", "play"
-    G "5342", "OXXXXOOO ", "play"
-    G "5348", "OOXXXOOX ", "play"
-    G "5349", "OOXXXOO X", "play"
-    G "5423", "OXXXXOOO ", "play"
-    G "5427", "OXOXXOXO ", "play"
-    G "5429", "OXOXXO OX", "play"
-    G "5432", "OXXXXOOO ", "play"
-    G "5438", "OOXXXOOX ", "play"
-    G "5439", "OOXXXOO X", "play"
-    G "5472", "OXOXXOX O", "lose"
-    G "5478", "OOOXXOXX ", "lose"
-    G "5479", "OOOXXOX X", "lose"
-    G "5483", "OOXXXOOX ", "play"
-    G "5487", "OOOXXOXX ", "lose"
-    G "5489", "OOOXXO XX", "lose"
-    G "5493", "OOXXXOO X", "play"
-    G "5497", "OOOXXOX X", "lose"
-    G "5498", "OOOXXO XX", "lose"
-    G "5672", "OXOOXXXO ", "play"
-    G "5678", "OOOOXXXX ", "lose"
-    G "5679", "OOOOXXX X", "lose"
-    G "5683", "OOXOXXOX ", "lose"
-    G "5687", "OOOOXXXX ", "lose"
-    G "5689", "OOOOXX XX", "lose"
-    G "5692", "OXOOXXO X", "lose"
-    G "5697", "OOOOXXX X", "lose"
-    G "5698", "OOOOXX XX", "lose"
-    G "5724", "OXOXXOXO ", "play"
-    G "5726", "OXOOXXXO ", "play"
-    G "5729", "OXOOX XOX", "play"
-    G "5834", "OOXXXOOX ", "play"
-    G "5836", "OOXOXXOX ", "lose"
-    G "5839", "OOXOX OXX", "lose"
-    G "5924", "OXOXXO OX", "play"
-    G "5926", "OXOOXX OX", "play"
-    G "5927", "OXOOX XOX", "play"
-    G "6127", "XXOOOXXO ", "play"
-    G "6128", "XXOOOXOX ", "lose"
-    G "6129", "XXOOOXO X", "lose"
-    G "6152", "XXOOXX OO", "play"
-    G "6157", "XOOOXXX O", "play"
-    G "6158", "XOOOXX XO", "play"
-    G "6172", "XXOOOXXO ", "play"
-    G "6178", "X OOOXXXO", "play"
-    G "6179", "X OOOXXOX", "play"
-    G "6182", "XXOOOXOX ", "lose"
-    G "6187", "X OOOXXXO", "play"
-    G "6189", "X OOOXOXX", "lose"
-    G "6192", "XXOOOXO X", "lose"
-    G "6197", "X OOOXXOX", "play"
-    G "6198", "X OOOXOXX", "lose"
-    G "6217", "XXOOOXXO ", "play"
-    G "6218", "XXOOOXOX ", "lose"
-    G "6219", "XXOOOXO X", "lose"
-    G "6251", "XXOOXX OO", "play"
-    G "6257", "OXOOXXXO ", "play"
-    G "6259", "OXOOXX OX", "play"
-    G "6271", "XXOOOXXO ", "play"
-    G "6278", " XOOOXXXO", "play"
-    G "6279", " XOOOXXOX", "play"
-    G "6281", "XXOOOXOX ", "lose"
-    G "6287", " XOOOXXXO", "play"
-    G "6289", " XOOOXOXX", "lose"
-    G "6291", "XXOOOXO X", "lose"
-    G "6295", "OXOOXXO X", "lose"
-    G "6298", "OXOO XOXX", "lose"
+    G U("1509 54 56 51 32 55"), "O XOOXXXO", "lose", U("")
+    G U("1509 49 57 51 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 49 57 51 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 49 57 51 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 52 57 51 32 50"), "OXXXOOO X", "play", U("1509 50 52 57 51")
+    G U("1509 52 57 51 32 55"), "O XXOOXOX", "play", U("1509 55 52 57 51")
+    G U("1509 52 57 51 32 56"), "O XXOOOXX", "play", U("1509 56 52 57 51")
+    G U("1509 54 50 52 32 55"), "OXOXOXX O", "lose", U("")
+    G U("1509 54 50 52 32 56"), "OXOXOXOX ", "lose", U("")
+    G U("1509 54 50 52 32 57"), "OXOXOXO X", "lose", U("")
+    G U("1509 56 50 52 32 54"), "OXOXOXOX ", "lose", U("")
+    G U("1509 56 50 52 32 55"), "OXOXO XXO", "lose", U("")
+    G U("1509 56 50 52 32 57"), "OXOXO OXX", "lose", U("")
+    G U("1509 57 50 52 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 50 52 32 55"), "OXOXO XOX", "play", U("1509 55 57 50 52")
+    G U("1509 57 50 52 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 55 51 52 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 55 51 52 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 55 51 52 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 57 51 52 32 50"), "OXXXOOO X", "play", U("1509 50 57 51 52")
+    G U("1509 57 51 52 32 55"), "O XXOOXOX", "play", U("1509 55 57 51 52")
+    G U("1509 57 51 52 32 56"), "O XXOOOXX", "play", U("1509 56 57 51 52")
+    G U("1509 50 53 52 32 51"), "OXXXXOOO ", "play", U("1509 51 50 53 52")
+    G U("1509 50 53 52 32 55"), "OXOXXOXO ", "play", U("1509 55 50 53 52")
+    G U("1509 50 53 52 32 57"), "OXOXXO OX", "play", U("1509 57 50 53 52")
+    G U("1509 51 53 52 32 50"), "OXXXXOOO ", "play", U("1509 50 51 53 52")
+    G U("1509 51 53 52 32 56"), "OOXXXOOX ", "play", U("1509 56 51 53 52")
+    G U("1509 51 53 52 32 57"), "OOXXXOO X", "play", U("1509 57 51 53 52")
+    G U("1509 55 53 52 32 50"), "OXOXXOX O", "lose", U("")
+    G U("1509 55 53 52 32 56"), "OOOXXOXX ", "lose", U("")
+    G U("1509 55 53 52 32 57"), "OOOXXOX X", "lose", U("")
+    G U("1509 56 53 52 32 51"), "OOXXXOOX ", "play", U("1509 51 56 53 52")
+    G U("1509 56 53 52 32 55"), "OOOXXOXX ", "lose", U("")
+    G U("1509 56 53 52 32 57"), "OOOXXO XX", "lose", U("")
+    G U("1509 57 53 52 32 51"), "OOXXXOO X", "play", U("1509 51 57 53 52")
+    G U("1509 57 53 52 32 55"), "OOOXXOX X", "lose", U("")
+    G U("1509 57 53 52 32 56"), "OOOXXO XX", "lose", U("")
+    G U("1509 50 54 52 32 55"), "OXOXOXX O", "lose", U("")
+    G U("1509 50 54 52 32 56"), "OXOXOXOX ", "lose", U("")
+    G U("1509 50 54 52 32 57"), "OXOXOXO X", "lose", U("")
+    G U("1509 55 54 52 32 51"), "OOXXOXXO ", "lose", U("")
+    G U("1509 55 54 52 32 56"), "OOOXOXXX ", "lose", U("")
+    G U("1509 55 54 52 32 57"), "OOOXOXX X", "lose", U("")
+    G U("1509 56 54 52 32 51"), "OOXXOX XO", "lose", U("")
+    G U("1509 56 54 52 32 55"), "OOOXOXXX ", "lose", U("")
+    G U("1509 56 54 52 32 57"), "OOOXOX XX", "lose", U("")
+    G U("1509 57 54 52 32 50"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 54 52 32 55"), "OOOXOXX X", "lose", U("")
+    G U("1509 57 54 52 32 56"), "OOOXOX XX", "lose", U("")
+    G U("1509 51 55 52 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 51 55 52 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 51 55 52 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 50 56 52 32 54"), "OXOXOXOX ", "lose", U("")
+    G U("1509 50 56 52 32 55"), "OXOXO XXO", "lose", U("")
+    G U("1509 50 56 52 32 57"), "OXOXO OXX", "lose", U("")
+    G U("1509 50 57 52 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 50 57 52 32 55"), "OXOXO XOX", "play", U("1509 55 50 57 52")
+    G U("1509 50 57 52 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 51 50 53 32 52"), "OXXXX OOO", "lose", U("")
+    G U("1509 51 50 53 32 54"), "OXXOXXOO ", "lose", U("")
+    G U("1509 51 50 53 32 57"), "OXXOX OOX", "lose", U("")
+    G U("1509 52 50 53 32 51"), "OXXXXOOO ", "play", U("1509 51 52 50 53")
+    G U("1509 52 50 53 32 55"), "OXOXXOXO ", "play", U("1509 55 52 50 53")
+    G U("1509 52 50 53 32 57"), "OXOXXO OX", "play", U("1509 57 52 50 53")
+    G U("1509 54 50 53 32 51"), "OXXOXXOO ", "lose", U("")
+    G U("1509 54 50 53 32 55"), "OXOOXXXO ", "play", U("1509 55 54 50 53")
+    G U("1509 54 50 53 32 57"), "OX OXXOOX", "lose", U("")
+    G U("1509 55 50 53 32 52"), "OXOXXOXO ", "play", U("1509 52 55 50 53")
+    G U("1509 55 50 53 32 54"), "OXOOXXXO ", "play", U("1509 54 55 50 53")
+    G U("1509 55 50 53 32 57"), "OXOOX XOX", "play", U("1509 57 55 50 53")
+    G U("1509 57 50 53 32 52"), "OXOXXO OX", "play", U("1509 52 57 50 53")
+    G U("1509 57 50 53 32 54"), "OXOOXX OX", "play", U("1509 54 57 50 53")
+    G U("1509 57 50 53 32 55"), "OXOOX XOX", "play", U("1509 55 57 50 53")
+    G U("1509 52 51 53 32 50"), "OXXXXOOO ", "play", U("1509 50 52 51 53")
+    G U("1509 52 51 53 32 56"), "OOXXXOOX ", "play", U("1509 56 52 51 53")
+    G U("1509 52 51 53 32 57"), "OOXXXOO X", "play", U("1509 57 52 51 53")
+    G U("1509 50 52 53 32 51"), "OXXXXOOO ", "play", U("1509 51 50 52 53")
+    G U("1509 50 52 53 32 55"), "OXOXXOXO ", "play", U("1509 55 50 52 53")
+    G U("1509 50 52 53 32 57"), "OXOXXO OX", "play", U("1509 57 50 52 53")
+    G U("1509 51 52 53 32 50"), "OXXXXOOO ", "play", U("1509 50 51 52 53")
+    G U("1509 51 52 53 32 56"), "OOXXXOOX ", "play", U("1509 56 51 52 53")
+    G U("1509 51 52 53 32 57"), "OOXXXOO X", "play", U("1509 57 51 52 53")
+    G U("1509 55 52 53 32 50"), "OXOXXOX O", "lose", U("")
+    G U("1509 55 52 53 32 56"), "OOOXXOXX ", "lose", U("")
+    G U("1509 55 52 53 32 57"), "OOOXXOX X", "lose", U("")
+    G U("1509 56 52 53 32 51"), "OOXXXOOX ", "play", U("1509 51 56 52 53")
+    G U("1509 56 52 53 32 55"), "OOOXXOXX ", "lose", U("")
+    G U("1509 56 52 53 32 57"), "OOOXXO XX", "lose", U("")
+    G U("1509 57 52 53 32 51"), "OOXXXOO X", "play", U("1509 51 57 52 53")
+    G U("1509 57 52 53 32 55"), "OOOXXOX X", "lose", U("")
+    G U("1509 57 52 53 32 56"), "OOOXXO XX", "lose", U("")
+    G U("1509 55 54 53 32 50"), "OXOOXXXO ", "play", U("1509 50 55 54 53")
+    G U("1509 55 54 53 32 56"), "OOOOXXXX ", "lose", U("")
+    G U("1509 55 54 53 32 57"), "OOOOXXX X", "lose", U("")
+    G U("1509 56 54 53 32 51"), "OOXOXXOX ", "lose", U("")
+    G U("1509 56 54 53 32 55"), "OOOOXXXX ", "lose", U("")
+    G U("1509 56 54 53 32 57"), "OOOOXX XX", "lose", U("")
+    G U("1509 57 54 53 32 50"), "OXOOXXO X", "lose", U("")
+    G U("1509 57 54 53 32 55"), "OOOOXXX X", "lose", U("")
+    G U("1509 57 54 53 32 56"), "OOOOXX XX", "lose", U("")
+    G U("1509 50 55 53 32 52"), "OXOXXOXO ", "play", U("1509 52 50 55 53")
+    G U("1509 50 55 53 32 54"), "OXOOXXXO ", "play", U("1509 54 50 55 53")
+    G U("1509 50 55 53 32 57"), "OXOOX XOX", "play", U("1509 57 50 55 53")
+    G U("1509 51 56 53 32 52"), "OOXXXOOX ", "play", U("1509 52 51 56 53")
+    G U("1509 51 56 53 32 54"), "OOXOXXOX ", "lose", U("")
+    G U("1509 51 56 53 32 57"), "OOXOX OXX", "lose", U("")
+    G U("1509 50 57 53 32 52"), "OXOXXO OX", "play", U("1509 52 50 57 53")
+    G U("1509 50 57 53 32 54"), "OXOOXX OX", "play", U("1509 54 50 57 53")
+    G U("1509 50 57 53 32 55"), "OXOOX XOX", "play", U("1509 55 50 57 53")
+    G U("1509 50 49 54 32 55"), "XXOOOXXO ", "play", U("1509 55 50 49 54")
+    G U("1509 50 49 54 32 56"), "XXOOOXOX ", "lose", U("")
+    G U("1509 50 49 54 32 57"), "XXOOOXO X", "lose", U("")
+    G U("1509 53 49 54 32 50"), "XXOOXX OO", "play", U("1509 50 53 49 54")
+    G U("1509 53 49 54 32 55"), "XOOOXXX O", "play", U("1509 55 53 49 54")
+    G U("1509 53 49 54 32 56"), "XOOOXX XO", "play", U("1509 56 53 49 54")
+    G U("1509 55 49 54 32 50"), "XXOOOXXO ", "play", U("1509 50 55 49 54")
+    G U("1509 55 49 54 32 56"), "X OOOXXXO", "play", U("1509 56 55 49 54")
+    G U("1509 55 49 54 32 57"), "X OOOXXOX", "play", U("1509 57 55 49 54")
+    G U("1509 56 49 54 32 50"), "XXOOOXOX ", "lose", U("")
+    G U("1509 56 49 54 32 55"), "X OOOXXXO", "play", U("1509 55 56 49 54")
+    G U("1509 56 49 54 32 57"), "X OOOXOXX", "lose", U("")
+    G U("1509 57 49 54 32 50"), "XXOOOXO X", "lose", U("")
+    G U("1509 57 49 54 32 55"), "X OOOXXOX", "play", U("1509 55 57 49 54")
+    G U("1509 57 49 54 32 56"), "X OOOXOXX", "lose", U("")
+    G U("1509 49 50 54 32 55"), "XXOOOXXO ", "play", U("1509 55 49 50 54")
+    G U("1509 49 50 54 32 56"), "XXOOOXOX ", "lose", U("")
+    G U("1509 49 50 54 32 57"), "XXOOOXO X", "lose", U("")
+    G U("1509 53 50 54 32 49"), "XXOOXX OO", "play", U("1509 49 53 50 54")
+    G U("1509 53 50 54 32 55"), "OXOOXXXO ", "play", U("1509 55 53 50 54")
+    G U("1509 53 50 54 32 57"), "OXOOXX OX", "play", U("1509 57 53 50 54")
+    G U("1509 55 50 54 32 49"), "XXOOOXXO ", "play", U("1509 49 55 50 54")
+    G U("1509 55 50 54 32 56"), " XOOOXXXO", "play", U("1509 56 55 50 54")
+    G U("1509 55 50 54 32 57"), " XOOOXXOX", "play", U("1509 57 55 50 54")
+    G U("1509 56 50 54 32 49"), "XXOOOXOX ", "lose", U("")
+    G U("1509 56 50 54 32 55"), " XOOOXXXO", "play", U("1509 55 56 50 54")
+    G U("1509 56 50 54 32 57"), " XOOOXOXX", "lose", U("")
+    G U("1509 57 50 54 32 49"), "XXOOOXO X", "lose", U("")
+    G U("1509 57 50 54 32 53"), "OXOOXXO X", "lose", U("")
+    G U("1509 57 50 54 32 56"), "OXOO XOXX", "lose", U("")
+    G U("1509 50 52 54 32 55"), "OXOXOXX O", "lose", U("")
 End Sub
 
 Private Sub InstallGame6()
-    G "6427", "OXOXOXX O", "lose"
-    G "6428", "OXOXOXOX ", "lose"
-    G "6429", "OXOXOXO X", "lose"
-    G "6472", "OXOXOXX O", "lose"
-    G "6478", "OOOXOXXX ", "lose"
-    G "6479", "OOOXOXX X", "lose"
-    G "6482", "OXOXOXOX ", "lose"
-    G "6487", "OOOXOXXX ", "lose"
-    G "6489", "OOOXOX XX", "lose"
-    G "6492", "OXOXOXO X", "lose"
-    G "6497", "OOOXOXX X", "lose"
-    G "6498", "OOOXOX XX", "lose"
-    G "6512", "XXOOXX OO", "play"
-    G "6517", "XOOOXXX O", "play"
-    G "6518", "XOOOXX XO", "play"
-    G "6521", "XXOOXX OO", "play"
-    G "6527", "OXOOXXXO ", "play"
-    G "6529", "OXOOXX OX", "play"
-    G "6572", "OXOOXXXO ", "play"
-    G "6578", "OOOOXXXX ", "lose"
-    G "6579", "OOOOXXX X", "lose"
-    G "6581", "XOOOXX XO", "play"
-    G "6587", "OOOOXXXX ", "lose"
-    G "6589", "OOOOXX XX", "lose"
-    G "6592", "OXOOXXO X", "lose"
-    G "6597", "OOOOXXX X", "lose"
-    G "6598", "OOOOXX XX", "lose"
-    G "6724", "OXOXOXX O", "lose"
-    G "6728", "OXO OXXXO", "lose"
-    G "6729", "OXO OXXOX", "play"
-    G "6824", "OXOXOXOX ", "lose"
-    G "6827", "OXO OXXXO", "lose"
-    G "6829", "OXO OXOXX", "lose"
-    G "6924", "OXOXOXO X", "lose"
-    G "6925", "OXOOXXO X", "lose"
-    G "6928", "OXOO XOXX", "lose"
-    G "7136", "XOXOOXXO ", "lose"
-    G "7138", "XOXOOOXX ", "lose"
-    G "7139", "XOXOOOX X", "lose"
-    G "7163", "XOXOOXXO ", "lose"
-    G "7168", "XO OOXXXO", "play"
-    G "7169", "XO OOXXOX", "lose"
-    G "7236", "OXXOOXX O", "lose"
-    G "7238", "OXXOOOXX ", "lose"
-    G "7239", "OXXOOOX X", "lose"
-    G "7293", "OXX OOXOX", "play"
-    G "7294", "OXOXO XOX", "play"
-    G "7296", "OXO OXXOX", "play"
-    G "7316", "XOXOOXXO ", "lose"
-    G "7318", "XOXOOOXX ", "lose"
-    G "7319", "XOXOOOX X", "lose"
-    G "7346", "OOXXOXXO ", "lose"
-    G "7348", "OOXXO XXO", "lose"
-    G "7349", "OOXXO XOX", "lose"
-    G "7381", "XOXOO XXO", "play"
-    G "7384", "OOXXO XXO", "lose"
-    G "7386", "OOX OXXXO", "lose"
-    G "7436", "OOXXOXXO ", "lose"
-    G "7438", "OOXXO XXO", "lose"
-    G "7439", "OOXXO XOX", "lose"
-    G "7463", "OOXXOXXO ", "lose"
-    G "7468", "OOOXOXXX ", "lose"
-    G "7469", "OOOXOXX X", "lose"
-    G "7492", "OXOXO XOX", "play"
-    G "7493", "OOXXO XOX", "lose"
-    G "7496", "OO XOXXOX", "lose"
-    G "7643", "OOXXOXXO ", "lose"
-    G "7648", "OOOXOXXX ", "lose"
-    G "7649", "OOOXOXX X", "lose"
-    G "7681", "XO OOXXXO", "play"
-    G "7683", "OOX OXXXO", "lose"
-    G "7684", "OO XOXXXO", "lose"
-    G "7812", "XX OOOXXO", "lose"
-    G "7813", "X XOOOXXO", "lose"
-    G "7816", "XO OOXXXO", "play"
-    G "7923", "OXX OOXOX", "play"
-    G "7924", "OXOXO XOX", "play"
-    G "7926", "OXO OXXOX", "play"
-    G "8134", "XOXXOOOX ", "play"
-    G "8136", "XOX OXOXO", "play"
-    G "8139", "XOX OOOXX", "play"
-    G "8143", "XOXXOOOX ", "play"
-    G "8146", "XOOXOXOX ", "lose"
-    G "8149", "XOOXO OXX", "lose"
-    G "8153", "XOXOX OXO", "play"
-    G "8154", "XO XXOOXO", "play"
-    G "8156", "XO OXXOXO", "play"
-    G "8163", "XOX OXOXO", "play"
-    G "8164", "XOOXOXOX ", "lose"
-    G "8169", "XOO OXOXX", "lose"
-    G "8193", "XOX OOOXX", "play"
-    G "8194", "XOOXO OXX", "lose"
-    G "8196", "XOO OXOXX", "lose"
-    G "8314", "XOXXOOOX ", "play"
-    G "8316", "XOX OXOXO", "play"
-    G "8319", "XOX OOOXX", "play"
-    G "8341", "XOXXOOOX ", "play"
-    G "8346", " OXXOXOXO", "play"
-    G "8349", " OXXOOOXX", "play"
-    G "8354", "OOXXXOOX ", "play"
-    G "8356", "OOXOXXOX ", "lose"
-    G "8359", "OOXOX OXX", "lose"
-    G "8361", "XOXO XOXO", "play"
-    G "8364", " OXXOXOXO", "play"
-    G "8365", " OXOXXOXO", "play"
-    G "8391", "XOX OOOXX", "play"
-    G "8394", "OOXX OOXX", "play"
-    G "8395", "OOX XOOXX", "play"
-    G "8413", "XOXXOOOX ", "play"
-    G "8416", "XOOXOXOX ", "lose"
-    G "8419", "XOOXO OXX", "lose"
-    G "8431", "XOXXOOOX ", "play"
-    G "8436", " OXXOXOXO", "play"
-    G "8439", " OXXOOOXX", "play"
-    G "8451", "XO XXOOXO", "play"
-    G "8453", "OOXXXOOX ", "play"
-    G "8459", "OO XXOOXX", "play"
-    G "8461", "XOOXOXOX ", "lose"
-    G "8463", " OXXOXOXO", "play"
-    G "8469", " OOXOXOXX", "lose"
-    G "8491", "XOOXO OXX", "lose"
-    G "8495", "OOOXX OXX", "lose"
-    G "8496", "OOOX XOXX", "lose"
-    G "8534", "OOXXXOOX ", "play"
-    G "8536", "OOXOXXOX ", "lose"
-    G "8539", "OOXOX OXX", "lose"
-    G "8613", "XOX OXOXO", "play"
-    G "8614", "XOOXOXOX ", "lose"
-    G "8619", "XOO OXOXX", "lose"
-    G "8631", "XOXO XOXO", "play"
-    G "8634", " OXXOXOXO", "play"
-    G "8635", " OXOXXOXO", "play"
-    G "8641", "XOOXOXOX ", "lose"
-    G "8643", " OXXOXOXO", "play"
-    G "8649", " OOXOXOXX", "lose"
-    G "8651", "XO OXXOXO", "play"
-    G "8653", "OOXOXXOX ", "lose"
-    G "8659", "OO OXXOXX", "lose"
-    G "8691", "XOO OXOXX", "lose"
-    G "8694", "OOOX XOXX", "lose"
+    G U("1509 50 52 54 32 56"), "OXOXOXOX ", "lose", U("")
+    G U("1509 50 52 54 32 57"), "OXOXOXO X", "lose", U("")
+    G U("1509 55 52 54 32 50"), "OXOXOXX O", "lose", U("")
+    G U("1509 55 52 54 32 56"), "OOOXOXXX ", "lose", U("")
+    G U("1509 55 52 54 32 57"), "OOOXOXX X", "lose", U("")
+    G U("1509 56 52 54 32 50"), "OXOXOXOX ", "lose", U("")
+    G U("1509 56 52 54 32 55"), "OOOXOXXX ", "lose", U("")
+    G U("1509 56 52 54 32 57"), "OOOXOX XX", "lose", U("")
+    G U("1509 57 52 54 32 50"), "OXOXOXO X", "lose", U("")
+    G U("1509 57 52 54 32 55"), "OOOXOXX X", "lose", U("")
+    G U("1509 57 52 54 32 56"), "OOOXOX XX", "lose", U("")
+    G U("1509 49 53 54 32 50"), "XXOOXX OO", "play", U("1509 50 49 53 54")
+    G U("1509 49 53 54 32 55"), "XOOOXXX O", "play", U("1509 55 49 53 54")
+    G U("1509 49 53 54 32 56"), "XOOOXX XO", "play", U("1509 56 49 53 54")
+    G U("1509 50 53 54 32 49"), "XXOOXX OO", "play", U("1509 49 50 53 54")
+    G U("1509 50 53 54 32 55"), "OXOOXXXO ", "play", U("1509 55 50 53 54")
+    G U("1509 50 53 54 32 57"), "OXOOXX OX", "play", U("1509 57 50 53 54")
+    G U("1509 55 53 54 32 50"), "OXOOXXXO ", "play", U("1509 50 55 53 54")
+    G U("1509 55 53 54 32 56"), "OOOOXXXX ", "lose", U("")
+    G U("1509 55 53 54 32 57"), "OOOOXXX X", "lose", U("")
+    G U("1509 56 53 54 32 49"), "XOOOXX XO", "play", U("1509 49 56 53 54")
+    G U("1509 56 53 54 32 55"), "OOOOXXXX ", "lose", U("")
+    G U("1509 56 53 54 32 57"), "OOOOXX XX", "lose", U("")
+    G U("1509 57 53 54 32 50"), "OXOOXXO X", "lose", U("")
+    G U("1509 57 53 54 32 55"), "OOOOXXX X", "lose", U("")
+    G U("1509 57 53 54 32 56"), "OOOOXX XX", "lose", U("")
+    G U("1509 50 55 54 32 52"), "OXOXOXX O", "lose", U("")
+    G U("1509 50 55 54 32 56"), "OXO OXXXO", "lose", U("")
+    G U("1509 50 55 54 32 57"), "OXO OXXOX", "play", U("1509 57 50 55 54")
+    G U("1509 50 56 54 32 52"), "OXOXOXOX ", "lose", U("")
+    G U("1509 50 56 54 32 55"), "OXO OXXXO", "lose", U("")
+    G U("1509 50 56 54 32 57"), "OXO OXOXX", "lose", U("")
+    G U("1509 50 57 54 32 52"), "OXOXOXO X", "lose", U("")
+    G U("1509 50 57 54 32 53"), "OXOOXXO X", "lose", U("")
+    G U("1509 50 57 54 32 56"), "OXOO XOXX", "lose", U("")
+    G U("1509 51 49 55 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 51 49 55 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 51 49 55 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 54 49 55 32 51"), "XOXOOXXO ", "lose", U("")
+    G U("1509 54 49 55 32 56"), "XO OOXXXO", "play", U("1509 56 54 49 55")
+    G U("1509 54 49 55 32 57"), "XO OOXXOX", "lose", U("")
+    G U("1509 51 50 55 32 54"), "OXXOOXX O", "lose", U("")
+    G U("1509 51 50 55 32 56"), "OXXOOOXX ", "lose", U("")
+    G U("1509 51 50 55 32 57"), "OXXOOOX X", "lose", U("")
+    G U("1509 57 50 55 32 51"), "OXX OOXOX", "play", U("1509 51 57 50 55")
+    G U("1509 57 50 55 32 52"), "OXOXO XOX", "play", U("1509 52 57 50 55")
+    G U("1509 57 50 55 32 54"), "OXO OXXOX", "play", U("1509 54 57 50 55")
+    G U("1509 49 51 55 32 54"), "XOXOOXXO ", "lose", U("")
+    G U("1509 49 51 55 32 56"), "XOXOOOXX ", "lose", U("")
+    G U("1509 49 51 55 32 57"), "XOXOOOX X", "lose", U("")
+    G U("1509 52 51 55 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 52 51 55 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 52 51 55 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 56 51 55 32 49"), "XOXOO XXO", "play", U("1509 49 56 51 55")
+    G U("1509 56 51 55 32 52"), "OOXXO XXO", "lose", U("")
+    G U("1509 56 51 55 32 54"), "OOX OXXXO", "lose", U("")
+    G U("1509 51 52 55 32 54"), "OOXXOXXO ", "lose", U("")
+    G U("1509 51 52 55 32 56"), "OOXXO XXO", "lose", U("")
+    G U("1509 51 52 55 32 57"), "OOXXO XOX", "lose", U("")
+    G U("1509 54 52 55 32 51"), "OOXXOXXO ", "lose", U("")
+    G U("1509 54 52 55 32 56"), "OOOXOXXX ", "lose", U("")
+    G U("1509 54 52 55 32 57"), "OOOXOXX X", "lose", U("")
+    G U("1509 57 52 55 32 50"), "OXOXO XOX", "play", U("1509 50 57 52 55")
+    G U("1509 57 52 55 32 51"), "OOXXO XOX", "lose", U("")
+    G U("1509 57 52 55 32 54"), "OO XOXXOX", "lose", U("")
+    G U("1509 52 54 55 32 51"), "OOXXOXXO ", "lose", U("")
+    G U("1509 52 54 55 32 56"), "OOOXOXXX ", "lose", U("")
+    G U("1509 52 54 55 32 57"), "OOOXOXX X", "lose", U("")
+    G U("1509 56 54 55 32 49"), "XO OOXXXO", "play", U("1509 49 56 54 55")
+    G U("1509 56 54 55 32 51"), "OOX OXXXO", "lose", U("")
+    G U("1509 56 54 55 32 52"), "OO XOXXXO", "lose", U("")
+    G U("1509 49 56 55 32 50"), "XX OOOXXO", "lose", U("")
+    G U("1509 49 56 55 32 51"), "X XOOOXXO", "lose", U("")
+    G U("1509 49 56 55 32 54"), "XO OOXXXO", "play", U("1509 54 49 56 55")
+    G U("1509 50 57 55 32 51"), "OXX OOXOX", "play", U("1509 51 50 57 55")
+    G U("1509 50 57 55 32 52"), "OXOXO XOX", "play", U("1509 52 50 57 55")
+    G U("1509 50 57 55 32 54"), "OXO OXXOX", "play", U("1509 54 50 57 55")
+    G U("1509 51 49 56 32 52"), "XOXXOOOX ", "play", U("1509 52 51 49 56")
+    G U("1509 51 49 56 32 54"), "XOX OXOXO", "play", U("1509 54 51 49 56")
+    G U("1509 51 49 56 32 57"), "XOX OOOXX", "play", U("1509 57 51 49 56")
+    G U("1509 52 49 56 32 51"), "XOXXOOOX ", "play", U("1509 51 52 49 56")
+    G U("1509 52 49 56 32 54"), "XOOXOXOX ", "lose", U("")
+    G U("1509 52 49 56 32 57"), "XOOXO OXX", "lose", U("")
+    G U("1509 53 49 56 32 51"), "XOXOX OXO", "play", U("1509 51 53 49 56")
+    G U("1509 53 49 56 32 52"), "XO XXOOXO", "play", U("1509 52 53 49 56")
+    G U("1509 53 49 56 32 54"), "XO OXXOXO", "play", U("1509 54 53 49 56")
+    G U("1509 54 49 56 32 51"), "XOX OXOXO", "play", U("1509 51 54 49 56")
+    G U("1509 54 49 56 32 52"), "XOOXOXOX ", "lose", U("")
+    G U("1509 54 49 56 32 57"), "XOO OXOXX", "lose", U("")
+    G U("1509 57 49 56 32 51"), "XOX OOOXX", "play", U("1509 51 57 49 56")
+    G U("1509 57 49 56 32 52"), "XOOXO OXX", "lose", U("")
+    G U("1509 57 49 56 32 54"), "XOO OXOXX", "lose", U("")
+    G U("1509 49 51 56 32 52"), "XOXXOOOX ", "play", U("1509 52 49 51 56")
+    G U("1509 49 51 56 32 54"), "XOX OXOXO", "play", U("1509 54 49 51 56")
+    G U("1509 49 51 56 32 57"), "XOX OOOXX", "play", U("1509 57 49 51 56")
+    G U("1509 52 51 56 32 49"), "XOXXOOOX ", "play", U("1509 49 52 51 56")
+    G U("1509 52 51 56 32 54"), " OXXOXOXO", "play", U("1509 54 52 51 56")
+    G U("1509 52 51 56 32 57"), " OXXOOOXX", "play", U("1509 57 52 51 56")
+    G U("1509 53 51 56 32 52"), "OOXXXOOX ", "play", U("1509 52 53 51 56")
+    G U("1509 53 51 56 32 54"), "OOXOXXOX ", "lose", U("")
+    G U("1509 53 51 56 32 57"), "OOXOX OXX", "lose", U("")
+    G U("1509 54 51 56 32 49"), "XOXO XOXO", "play", U("1509 49 54 51 56")
+    G U("1509 54 51 56 32 52"), " OXXOXOXO", "play", U("1509 52 54 51 56")
+    G U("1509 54 51 56 32 53"), " OXOXXOXO", "play", U("1509 53 54 51 56")
+    G U("1509 57 51 56 32 49"), "XOX OOOXX", "play", U("1509 49 57 51 56")
+    G U("1509 57 51 56 32 52"), "OOXX OOXX", "play", U("1509 52 57 51 56")
+    G U("1509 57 51 56 32 53"), "OOX XOOXX", "play", U("1509 53 57 51 56")
+    G U("1509 49 52 56 32 51"), "XOXXOOOX ", "play", U("1509 51 49 52 56")
+    G U("1509 49 52 56 32 54"), "XOOXOXOX ", "lose", U("")
+    G U("1509 49 52 56 32 57"), "XOOXO OXX", "lose", U("")
+    G U("1509 51 52 56 32 49"), "XOXXOOOX ", "play", U("1509 49 51 52 56")
+    G U("1509 51 52 56 32 54"), " OXXOXOXO", "play", U("1509 54 51 52 56")
+    G U("1509 51 52 56 32 57"), " OXXOOOXX", "play", U("1509 57 51 52 56")
+    G U("1509 53 52 56 32 49"), "XO XXOOXO", "play", U("1509 49 53 52 56")
+    G U("1509 53 52 56 32 51"), "OOXXXOOX ", "play", U("1509 51 53 52 56")
+    G U("1509 53 52 56 32 57"), "OO XXOOXX", "play", U("1509 57 53 52 56")
+    G U("1509 54 52 56 32 49"), "XOOXOXOX ", "lose", U("")
+    G U("1509 54 52 56 32 51"), " OXXOXOXO", "play", U("1509 51 54 52 56")
+    G U("1509 54 52 56 32 57"), " OOXOXOXX", "lose", U("")
+    G U("1509 57 52 56 32 49"), "XOOXO OXX", "lose", U("")
+    G U("1509 57 52 56 32 53"), "OOOXX OXX", "lose", U("")
+    G U("1509 57 52 56 32 54"), "OOOX XOXX", "lose", U("")
+    G U("1509 51 53 56 32 52"), "OOXXXOOX ", "play", U("1509 52 51 53 56")
+    G U("1509 51 53 56 32 54"), "OOXOXXOX ", "lose", U("")
+    G U("1509 51 53 56 32 57"), "OOXOX OXX", "lose", U("")
+    G U("1509 49 54 56 32 51"), "XOX OXOXO", "play", U("1509 51 49 54 56")
+    G U("1509 49 54 56 32 52"), "XOOXOXOX ", "lose", U("")
+    G U("1509 49 54 56 32 57"), "XOO OXOXX", "lose", U("")
+    G U("1509 51 54 56 32 49"), "XOXO XOXO", "play", U("1509 49 51 54 56")
+    G U("1509 51 54 56 32 52"), " OXXOXOXO", "play", U("1509 52 51 54 56")
+    G U("1509 51 54 56 32 53"), " OXOXXOXO", "play", U("1509 53 51 54 56")
+    G U("1509 52 54 56 32 49"), "XOOXOXOX ", "lose", U("")
+    G U("1509 52 54 56 32 51"), " OXXOXOXO", "play", U("1509 51 52 54 56")
+    G U("1509 52 54 56 32 57"), " OOXOXOXX", "lose", U("")
+    G U("1509 53 54 56 32 49"), "XO OXXOXO", "play", U("1509 49 53 54 56")
+    G U("1509 53 54 56 32 51"), "OOXOXXOX ", "lose", U("")
+    G U("1509 53 54 56 32 57"), "OO OXXOXX", "lose", U("")
+    G U("1509 57 54 56 32 49"), "XOO OXOXX", "lose", U("")
+    G U("1509 57 54 56 32 52"), "OOOX XOXX", "lose", U("")
+    G U("1509 57 54 56 32 53"), "OOO XXOXX", "lose", U("")
 End Sub
 
 Private Sub InstallGame7()
-    G "8695", "OOO XXOXX", "lose"
-    G "8713", "XOXOO XXO", "play"
-    G "8715", "XOOOX XXO", "play"
-    G "8716", "XOOO XXXO", "play"
-    G "8731", "XOXOO XXO", "play"
-    G "8734", "OOXXO XXO", "lose"
-    G "8736", "OOX OXXXO", "lose"
-    G "8743", "OOXXO XXO", "lose"
-    G "8745", "OOOXX XXO", "lose"
-    G "8746", "OOOX XXXO", "lose"
-    G "8751", "XOO XOXXO", "lose"
-    G "8754", "OOOXX XXO", "lose"
-    G "8756", "OOO XXXXO", "lose"
-    G "8763", "OOX OXXXO", "lose"
-    G "8764", "OOOX XXXO", "lose"
-    G "8765", "OOO XXXXO", "lose"
-    G "8913", "XOX OOOXX", "play"
-    G "8914", "XOOXO OXX", "lose"
-    G "8916", "XOO OXOXX", "lose"
-    G "8931", "XOX OOOXX", "play"
-    G "8934", "OOXX OOXX", "play"
-    G "8935", "OOX XOOXX", "play"
-    G "8941", "XOOXO OXX", "lose"
-    G "8945", "OOOXX OXX", "lose"
-    G "8946", "OOOX XOXX", "lose"
-    G "8953", "OOXOX OXX", "lose"
-    G "8954", "OOOXX OXX", "lose"
-    G "8956", "OOO XXOXX", "lose"
-    G "8961", "XOO OXOXX", "lose"
-    G "8964", "OOOX XOXX", "lose"
-    G "8965", "OOO XXOXX", "lose"
-    G "9134", "XOXXOO OX", "lose"
-    G "9137", "XOXOOOX X", "lose"
-    G "9138", "XOXOOO XX", "lose"
-    G "9143", "XOXXO OOX", "lose"
-    G "9146", "XOOXOXO X", "lose"
-    G "9148", "XOOXO OXX", "lose"
-    G "9164", "XOOXOXO X", "lose"
-    G "9167", "XOO OXXOX", "lose"
-    G "9168", "XOO OXOXX", "lose"
-    G "9183", "XOX OOOXX", "play"
-    G "9184", "XOOXO OXX", "lose"
-    G "9186", "XOO OXOXX", "lose"
-    G "9234", "OXXXOOO X", "play"
-    G "9237", "OXXOOOX X", "lose"
-    G "9238", "OXXOOO XX", "lose"
-    G "9246", "OXOXOXO X", "lose"
-    G "9247", "OXOXO XOX", "play"
-    G "9248", "OXOXO OXX", "lose"
-    G "9264", "OXOXOXO X", "lose"
-    G "9267", "OXO OXXOX", "play"
-    G "9268", "OXO OXOXX", "lose"
-    G "9273", "OXX OOXOX", "play"
-    G "9274", "OXOXO XOX", "play"
-    G "9276", "OXO OXXOX", "play"
-    G "9283", "OXXOO OXX", "lose"
-    G "9284", "OXOXO OXX", "lose"
-    G "9286", "OXO OXOXX", "lose"
-    G "9314", "XOXXOO OX", "lose"
-    G "9317", "XOXOOOX X", "lose"
-    G "9318", "XOXOOO XX", "lose"
-    G "9342", "OXXXOOO X", "play"
-    G "9347", "O XXOOXOX", "play"
-    G "9348", "O XXOOOXX", "play"
-    G "9426", "OXOXOXO X", "lose"
-    G "9427", "OXOXO XOX", "play"
-    G "9428", "OXOXO OXX", "lose"
-    G "9432", "OXXXOOO X", "play"
-    G "9437", "O XXOOXOX", "play"
-    G "9438", "O XXOOOXX", "play"
-    G "9462", "OXOXOXO X", "lose"
-    G "9467", "OOOXOXX X", "lose"
-    G "9468", "OOOXOX XX", "lose"
-    G "9472", "OXOXO XOX", "play"
-    G "9473", "OOXXO XOX", "lose"
-    G "9476", "OO XOXXOX", "lose"
-    G "9482", "OXOXO OXX", "lose"
-    G "9483", "O XXOOOXX", "play"
-    G "9486", "O OXOXOXX", "lose"
-    G "9614", "XOOXOXO X", "lose"
-    G "9617", "XOO OXXOX", "lose"
-    G "9618", "XOO OXOXX", "lose"
-    G "9642", "OXOXOXO X", "lose"
-    G "9647", "OOOXOXX X", "lose"
-    G "9648", "OOOXOX XX", "lose"
-    G "9671", "XOO OXXOX", "lose"
-    G "9672", "OXO OXXOX", "play"
-    G "9674", " OOXOXXOX", "lose"
-    G "9723", "OXX OOXOX", "play"
-    G "9724", "OXOXO XOX", "play"
-    G "9726", "OXO OXXOX", "play"
-    G "9823", "OXXOO OXX", "lose"
-    G "9824", "OXOXO OXX", "lose"
-    G "9826", "OXO OXOXX", "lose"
-    G "9831", "X XOOOOXX", "lose"
-    G "9832", " XXOOOOXX", "lose"
-    G "9834", "O XXOOOXX", "play"
-    G "12769", "XXOOOXXOX", "draw"
-    G "13867", "XOXOOXXXO", "draw"
-    G "14389", "XOXXOOOXX", "draw"
-    G "16834", "XOXXOXOXO", "draw"
-    G "17683", "XOXOOXXXO", "draw"
-    G "18672", "XXOOOXXXO", "draw"
-    G "19834", "XOXXOOOXX", "draw"
-    G "24976", "OXOXOXXOX", "draw"
-    G "25439", "OXXXXOOOX", "draw"
-    G "25479", "OXOXXOXOX", "draw"
-    G "25497", "OXOXXOXOX", "draw"
-    G "25679", "OXOOXXXOX", "draw"
-    G "25749", "OXOXXOXOX", "draw"
-    G "25769", "OXOOXXXOX", "draw"
-    G "25796", "OXOOXXXOX", "draw"
-    G "25947", "OXOXXOXOX", "draw"
-    G "25967", "OXOOXXXOX", "draw"
-    G "25976", "OXOOXXXOX", "draw"
-    G "27934", "OXXXOOXOX", "draw"
-    G "27946", "OXOXOXXOX", "draw"
-    G "27964", "OXOXOXXOX", "draw"
-    G "29348", "OXXXOOOXX", "draw"
-    G "29476", "OXOXOXXOX", "draw"
-    G "29674", "OXOXOXXOX", "draw"
-    G "29734", "OXXXOOXOX", "draw"
-    G "29746", "OXOXOXXOX", "draw"
-    G "29764", "OXOXOXXOX", "draw"
-    G "31867", "XOXOOXXXO", "draw"
-    G "32948", "OXXXOOOXX", "draw"
-    G "34928", "OXXXOOOXX", "draw"
-    G "34972", "OXXXOOXOX", "draw"
-    G "34982", "OXXXOOOXX", "draw"
-    G "36187", "XOXOOXXXO", "draw"
-    G "37816", "XOXOOXXXO", "draw"
-    G "38617", "XOXOOXXXO", "draw"
-    G "39428", "OXXXOOOXX", "draw"
-    G "39472", "OXXXOOXOX", "draw"
-    G "39482", "OXXXOOOXX", "draw"
-    G "42976", "OXOXOXXOX", "draw"
-    G "43928", "OXXXOOOXX", "draw"
-    G "43972", "OXXXOOXOX", "draw"
-    G "43982", "OXXXOOOXX", "draw"
-    G "45239", "OXXXXOOOX", "draw"
+    G U("1509 49 55 56 32 51"), "XOXOO XXO", "play", U("1509 51 49 55 56")
+    G U("1509 49 55 56 32 53"), "XOOOX XXO", "play", U("1509 53 49 55 56")
+    G U("1509 49 55 56 32 54"), "XOOO XXXO", "play", U("1509 54 49 55 56")
+    G U("1509 51 55 56 32 49"), "XOXOO XXO", "play", U("1509 49 51 55 56")
+    G U("1509 51 55 56 32 52"), "OOXXO XXO", "lose", U("")
+    G U("1509 51 55 56 32 54"), "OOX OXXXO", "lose", U("")
+    G U("1509 52 55 56 32 51"), "OOXXO XXO", "lose", U("")
+    G U("1509 52 55 56 32 53"), "OOOXX XXO", "lose", U("")
+    G U("1509 52 55 56 32 54"), "OOOX XXXO", "lose", U("")
+    G U("1509 53 55 56 32 49"), "XOO XOXXO", "lose", U("")
+    G U("1509 53 55 56 32 52"), "OOOXX XXO", "lose", U("")
+    G U("1509 53 55 56 32 54"), "OOO XXXXO", "lose", U("")
+    G U("1509 54 55 56 32 51"), "OOX OXXXO", "lose", U("")
+    G U("1509 54 55 56 32 52"), "OOOX XXXO", "lose", U("")
+    G U("1509 54 55 56 32 53"), "OOO XXXXO", "lose", U("")
+    G U("1509 49 57 56 32 51"), "XOX OOOXX", "play", U("1509 51 49 57 56")
+    G U("1509 49 57 56 32 52"), "XOOXO OXX", "lose", U("")
+    G U("1509 49 57 56 32 54"), "XOO OXOXX", "lose", U("")
+    G U("1509 51 57 56 32 49"), "XOX OOOXX", "play", U("1509 49 51 57 56")
+    G U("1509 51 57 56 32 52"), "OOXX OOXX", "play", U("1509 52 51 57 56")
+    G U("1509 51 57 56 32 53"), "OOX XOOXX", "play", U("1509 53 51 57 56")
+    G U("1509 52 57 56 32 49"), "XOOXO OXX", "lose", U("")
+    G U("1509 52 57 56 32 53"), "OOOXX OXX", "lose", U("")
+    G U("1509 52 57 56 32 54"), "OOOX XOXX", "lose", U("")
+    G U("1509 53 57 56 32 51"), "OOXOX OXX", "lose", U("")
+    G U("1509 53 57 56 32 52"), "OOOXX OXX", "lose", U("")
+    G U("1509 53 57 56 32 54"), "OOO XXOXX", "lose", U("")
+    G U("1509 54 57 56 32 49"), "XOO OXOXX", "lose", U("")
+    G U("1509 54 57 56 32 52"), "OOOX XOXX", "lose", U("")
+    G U("1509 54 57 56 32 53"), "OOO XXOXX", "lose", U("")
+    G U("1509 51 49 57 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 51 49 57 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 51 49 57 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 52 49 57 32 51"), "XOXXO OOX", "lose", U("")
+    G U("1509 52 49 57 32 54"), "XOOXOXO X", "lose", U("")
+    G U("1509 52 49 57 32 56"), "XOOXO OXX", "lose", U("")
+    G U("1509 54 49 57 32 52"), "XOOXOXO X", "lose", U("")
+    G U("1509 54 49 57 32 55"), "XOO OXXOX", "lose", U("")
+    G U("1509 54 49 57 32 56"), "XOO OXOXX", "lose", U("")
+    G U("1509 56 49 57 32 51"), "XOX OOOXX", "play", U("1509 51 56 49 57")
+    G U("1509 56 49 57 32 52"), "XOOXO OXX", "lose", U("")
+    G U("1509 56 49 57 32 54"), "XOO OXOXX", "lose", U("")
+    G U("1509 51 50 57 32 52"), "OXXXOOO X", "play", U("1509 52 51 50 57")
+    G U("1509 51 50 57 32 55"), "OXXOOOX X", "lose", U("")
+    G U("1509 51 50 57 32 56"), "OXXOOO XX", "lose", U("")
+    G U("1509 52 50 57 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 52 50 57 32 55"), "OXOXO XOX", "play", U("1509 55 52 50 57")
+    G U("1509 52 50 57 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 54 50 57 32 52"), "OXOXOXO X", "lose", U("")
+    G U("1509 54 50 57 32 55"), "OXO OXXOX", "play", U("1509 55 54 50 57")
+    G U("1509 54 50 57 32 56"), "OXO OXOXX", "lose", U("")
+    G U("1509 55 50 57 32 51"), "OXX OOXOX", "play", U("1509 51 55 50 57")
+    G U("1509 55 50 57 32 52"), "OXOXO XOX", "play", U("1509 52 55 50 57")
+    G U("1509 55 50 57 32 54"), "OXO OXXOX", "play", U("1509 54 55 50 57")
+    G U("1509 56 50 57 32 51"), "OXXOO OXX", "lose", U("")
+    G U("1509 56 50 57 32 52"), "OXOXO OXX", "lose", U("")
+    G U("1509 56 50 57 32 54"), "OXO OXOXX", "lose", U("")
+    G U("1509 49 51 57 32 52"), "XOXXOO OX", "lose", U("")
+    G U("1509 49 51 57 32 55"), "XOXOOOX X", "lose", U("")
+    G U("1509 49 51 57 32 56"), "XOXOOO XX", "lose", U("")
+    G U("1509 52 51 57 32 50"), "OXXXOOO X", "play", U("1509 50 52 51 57")
+    G U("1509 52 51 57 32 55"), "O XXOOXOX", "play", U("1509 55 52 51 57")
+    G U("1509 52 51 57 32 56"), "O XXOOOXX", "play", U("1509 56 52 51 57")
+    G U("1509 50 52 57 32 54"), "OXOXOXO X", "lose", U("")
+    G U("1509 50 52 57 32 55"), "OXOXO XOX", "play", U("1509 55 50 52 57")
+    G U("1509 50 52 57 32 56"), "OXOXO OXX", "lose", U("")
+    G U("1509 51 52 57 32 50"), "OXXXOOO X", "play", U("1509 50 51 52 57")
+    G U("1509 51 52 57 32 55"), "O XXOOXOX", "play", U("1509 55 51 52 57")
+    G U("1509 51 52 57 32 56"), "O XXOOOXX", "play", U("1509 56 51 52 57")
+    G U("1509 54 52 57 32 50"), "OXOXOXO X", "lose", U("")
+    G U("1509 54 52 57 32 55"), "OOOXOXX X", "lose", U("")
+    G U("1509 54 52 57 32 56"), "OOOXOX XX", "lose", U("")
+    G U("1509 55 52 57 32 50"), "OXOXO XOX", "play", U("1509 50 55 52 57")
+    G U("1509 55 52 57 32 51"), "OOXXO XOX", "lose", U("")
+    G U("1509 55 52 57 32 54"), "OO XOXXOX", "lose", U("")
+    G U("1509 56 52 57 32 50"), "OXOXO OXX", "lose", U("")
+    G U("1509 56 52 57 32 51"), "O XXOOOXX", "play", U("1509 51 56 52 57")
+    G U("1509 56 52 57 32 54"), "O OXOXOXX", "lose", U("")
+    G U("1509 49 54 57 32 52"), "XOOXOXO X", "lose", U("")
+    G U("1509 49 54 57 32 55"), "XOO OXXOX", "lose", U("")
+    G U("1509 49 54 57 32 56"), "XOO OXOXX", "lose", U("")
+    G U("1509 52 54 57 32 50"), "OXOXOXO X", "lose", U("")
+    G U("1509 52 54 57 32 55"), "OOOXOXX X", "lose", U("")
+    G U("1509 52 54 57 32 56"), "OOOXOX XX", "lose", U("")
+    G U("1509 55 54 57 32 49"), "XOO OXXOX", "lose", U("")
+    G U("1509 55 54 57 32 50"), "OXO OXXOX", "play", U("1509 50 55 54 57")
+    G U("1509 55 54 57 32 52"), " OOXOXXOX", "lose", U("")
+    G U("1509 50 55 57 32 51"), "OXX OOXOX", "play", U("1509 51 50 55 57")
+    G U("1509 50 55 57 32 52"), "OXOXO XOX", "play", U("1509 52 50 55 57")
+    G U("1509 50 55 57 32 54"), "OXO OXXOX", "play", U("1509 54 50 55 57")
+    G U("1509 50 56 57 32 51"), "OXXOO OXX", "lose", U("")
+    G U("1509 50 56 57 32 52"), "OXOXO OXX", "lose", U("")
+    G U("1509 50 56 57 32 54"), "OXO OXOXX", "lose", U("")
+    G U("1509 51 56 57 32 49"), "X XOOOOXX", "lose", U("")
+    G U("1509 51 56 57 32 50"), " XXOOOOXX", "lose", U("")
+    G U("1509 51 56 57 32 52"), "O XXOOOXX", "play", U("1509 52 51 56 57")
+    G U("1509 54 55 50 49 32 57"), "XXOOOXXOX", "draw", U("")
+    G U("1509 54 56 51 49 32 55"), "XOXOOXXXO", "draw", U("")
+    G U("1509 56 51 52 49 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 51 56 54 49 32 52"), "XOXXOXOXO", "draw", U("")
+    G U("1509 56 54 55 49 32 51"), "XOXOOXXXO", "draw", U("")
+    G U("1509 55 54 56 49 32 50"), "XXOOOXXXO", "draw", U("")
+    G U("1509 51 56 57 49 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 55 57 52 50 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 52 53 50 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 55 52 53 50 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 57 52 53 50 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 55 54 53 50 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 55 53 50 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 55 53 50 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 57 55 53 50 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 57 53 50 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 57 53 50 32 55"), "OXOOXXXOX", "draw", U("")
+    G U("1509 55 57 53 50 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 51 57 55 50 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 57 55 50 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 57 55 50 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 52 51 57 50 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 52 57 50 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 55 54 57 50 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 55 57 50 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 55 57 50 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 55 57 50 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 56 49 51 32 55"), "XOXOOXXXO", "draw", U("")
+    G U("1509 52 57 50 51 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 50 57 52 51 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 57 52 51 32 50"), "OXXXOOXOX", "draw", U("")
+    G U("1509 56 57 52 51 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 56 49 54 51 32 55"), "XOXOOXXXO", "draw", U("")
+    G U("1509 49 56 55 51 32 54"), "XOXOOXXXO", "draw", U("")
+    G U("1509 49 54 56 51 32 55"), "XOXOOXXXO", "draw", U("")
+    G U("1509 50 52 57 51 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 52 57 51 32 50"), "OXXXOOXOX", "draw", U("")
+    G U("1509 56 52 57 51 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 57 50 52 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 50 57 51 52 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 57 51 52 32 50"), "OXXXOOXOX", "draw", U("")
+    G U("1509 56 57 51 52 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 51 50 53 52 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 55 50 53 52 32 57"), "OXOXXOXOX", "draw", U("")
 End Sub
 
 Private Sub InstallGame8()
-    G "45279", "OXOXXOXOX", "draw"
-    G "45297", "OXOXXOXOX", "draw"
-    G "45329", "OXXXXOOOX", "draw"
-    G "45389", "OOXXXOOXX", "draw"
-    G "45398", "OOXXXOOXX", "draw"
-    G "45839", "OOXXXOOXX", "draw"
-    G "45938", "OOXXXOOXX", "draw"
-    G "49276", "OXOXOXXOX", "draw"
-    G "52439", "OXXXXOOOX", "draw"
-    G "52479", "OXOXXOXOX", "draw"
-    G "52497", "OXOXXOXOX", "draw"
-    G "52679", "OXOOXXXOX", "draw"
-    G "52749", "OXOXXOXOX", "draw"
-    G "52769", "OXOOXXXOX", "draw"
-    G "52796", "OXOOXXXOX", "draw"
-    G "52947", "OXOXXOXOX", "draw"
-    G "52967", "OXOOXXXOX", "draw"
-    G "52976", "OXOOXXXOX", "draw"
-    G "53429", "OXXXXOOOX", "draw"
-    G "53489", "OOXXXOOXX", "draw"
-    G "53498", "OOXXXOOXX", "draw"
-    G "54239", "OXXXXOOOX", "draw"
-    G "54279", "OXOXXOXOX", "draw"
-    G "54297", "OXOXXOXOX", "draw"
-    G "54329", "OXXXXOOOX", "draw"
-    G "54389", "OOXXXOOXX", "draw"
-    G "54398", "OOXXXOOXX", "draw"
-    G "54839", "OOXXXOOXX", "draw"
-    G "54938", "OOXXXOOXX", "draw"
-    G "56729", "OXOOXXXOX", "draw"
-    G "57249", "OXOXXOXOX", "draw"
-    G "57269", "OXOOXXXOX", "draw"
-    G "57296", "OXOOXXXOX", "draw"
-    G "58349", "OOXXXOOXX", "draw"
-    G "59247", "OXOXXOXOX", "draw"
-    G "59267", "OXOOXXXOX", "draw"
-    G "59276", "OXOOXXXOX", "draw"
-    G "61279", "XXOOOXXOX", "draw"
-    G "61527", "XXOOXXXOO", "draw"
-    G "61578", "XOOOXXXXO", "draw"
-    G "61587", "XOOOXXXXO", "draw"
-    G "61729", "XXOOOXXOX", "draw"
-    G "61782", "XXOOOXXXO", "draw"
-    G "61792", "XXOOOXXOX", "draw"
-    G "61872", "XXOOOXXXO", "draw"
-    G "61972", "XXOOOXXOX", "draw"
-    G "62179", "XXOOOXXOX", "draw"
-    G "62517", "XXOOXXXOO", "draw"
-    G "62579", "OXOOXXXOX", "draw"
-    G "62597", "OXOOXXXOX", "draw"
-    G "62719", "XXOOOXXOX", "draw"
-    G "62781", "XXOOOXXXO", "draw"
-    G "62791", "XXOOOXXOX", "draw"
-    G "62871", "XXOOOXXXO", "draw"
-    G "65127", "XXOOXXXOO", "draw"
-    G "65178", "XOOOXXXXO", "draw"
-    G "65187", "XOOOXXXXO", "draw"
-    G "65217", "XXOOXXXOO", "draw"
-    G "65279", "OXOOXXXOX", "draw"
-    G "65297", "OXOOXXXOX", "draw"
-    G "65729", "OXOOXXXOX", "draw"
-    G "65817", "XOOOXXXXO", "draw"
-    G "67294", "OXOXOXXOX", "draw"
-    G "71683", "XOXOOXXXO", "draw"
-    G "72934", "OXXXOOXOX", "draw"
-    G "72946", "OXOXOXXOX", "draw"
-    G "72964", "OXOXOXXOX", "draw"
-    G "73816", "XOXOOXXXO", "draw"
-    G "74926", "OXOXOXXOX", "draw"
-    G "76813", "XOXOOXXXO", "draw"
-    G "78163", "XOXOOXXXO", "draw"
-    G "79234", "OXXXOOXOX", "draw"
-    G "79246", "OXOXOXXOX", "draw"
-    G "79264", "OXOXOXXOX", "draw"
-    G "81349", "XOXXOOOXX", "draw"
-    G "81364", "XOXXOXOXO", "draw"
-    G "81394", "XOXXOOOXX", "draw"
-    G "81439", "XOXXOOOXX", "draw"
-    G "81536", "XOXOXXOXO", "draw"
-    G "81543", "XOXXXOOXO", "draw"
-    G "81563", "XOXOXXOXO", "draw"
-    G "81634", "XOXXOXOXO", "draw"
-    G "81934", "XOXXOOOXX", "draw"
-    G "83149", "XOXXOOOXX", "draw"
-    G "83164", "XOXXOXOXO", "draw"
-    G "83194", "XOXXOOOXX", "draw"
-    G "83419", "XOXXOOOXX", "draw"
-    G "83461", "XOXXOXOXO", "draw"
-    G "83491", "XOXXOOOXX", "draw"
-    G "83549", "OOXXXOOXX", "draw"
-    G "83615", "XOXOXXOXO", "draw"
-    G "83641", "XOXXOXOXO", "draw"
-    G "83651", "XOXOXXOXO", "draw"
-    G "83914", "XOXXOOOXX", "draw"
-    G "83945", "OOXXXOOXX", "draw"
-    G "83954", "OOXXXOOXX", "draw"
-    G "84139", "XOXXOOOXX", "draw"
-    G "84319", "XOXXOOOXX", "draw"
-    G "84361", "XOXXOXOXO", "draw"
-    G "84391", "XOXXOOOXX", "draw"
-    G "84513", "XOXXXOOXO", "draw"
-    G "84539", "OOXXXOOXX", "draw"
-    G "84593", "OOXXXOOXX", "draw"
-    G "84631", "XOXXOXOXO", "draw"
-    G "85349", "OOXXXOOXX", "draw"
-    G "86134", "XOXXOXOXO", "draw"
-    G "86315", "XOXOXXOXO", "draw"
-    G "86341", "XOXXOXOXO", "draw"
-    G "86351", "XOXOXXOXO", "draw"
-    G "86431", "XOXXOXOXO", "draw"
-    G "86513", "XOXOXXOXO", "draw"
-    G "87136", "XOXOOXXXO", "draw"
-    G "87156", "XOOOXXXXO", "draw"
-    G "87165", "XOOOXXXXO", "draw"
-    G "87316", "XOXOOXXXO", "draw"
-    G "89134", "XOXXOOOXX", "draw"
-    G "89314", "XOXXOOOXX", "draw"
-    G "89345", "OOXXXOOXX", "draw"
-    G "89354", "OOXXXOOXX", "draw"
-    G "91834", "XOXXOOOXX", "draw"
-    G "92348", "OXXXOOOXX", "draw"
-    G "92476", "OXOXOXXOX", "draw"
-    G "92674", "OXOXOXXOX", "draw"
-    G "92734", "OXXXOOXOX", "draw"
-    G "92746", "OXOXOXXOX", "draw"
-    G "92764", "OXOXOXXOX", "draw"
-    G "93428", "OXXXOOOXX", "draw"
-    G "93472", "OXXXOOXOX", "draw"
-    G "93482", "OXXXOOOXX", "draw"
-    G "94276", "OXOXOXXOX", "draw"
-    G "94328", "OXXXOOOXX", "draw"
-    G "94372", "OXXXOOXOX", "draw"
-    G "94382", "OXXXOOOXX", "draw"
-    G "94726", "OXOXOXXOX", "draw"
-    G "94832", "OXXXOOOXX", "draw"
-    G "96724", "OXOXOXXOX", "draw"
-    G "97234", "OXXXOOXOX", "draw"
-    G "97246", "OXOXOXXOX", "draw"
-    G "97264", "OXOXOXXOX", "draw"
-    G "98342", "OXXXOOOXX", "draw"
+    G U("1509 57 50 53 52 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 50 51 53 52 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 56 51 53 52 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 57 51 53 52 32 56"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 56 53 52 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 57 53 52 32 56"), "OOXXXOOXX", "draw", U("")
+    G U("1509 55 50 57 52 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 52 50 53 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 55 52 50 53 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 57 52 50 53 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 55 54 50 53 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 55 50 53 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 55 50 53 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 57 55 50 53 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 57 50 53 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 57 50 53 32 55"), "OXOOXXXOX", "draw", U("")
+    G U("1509 55 57 50 53 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 50 52 51 53 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 56 52 51 53 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 57 52 51 53 32 56"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 50 52 53 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 55 50 52 53 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 57 50 52 53 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 50 51 52 53 32 57"), "OXXXXOOOX", "draw", U("")
+    G U("1509 56 51 52 53 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 57 51 52 53 32 56"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 56 52 53 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 57 52 53 32 56"), "OOXXXOOXX", "draw", U("")
+    G U("1509 50 55 54 53 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 50 55 53 32 57"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 50 55 53 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 57 50 55 53 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 52 51 56 53 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 52 50 57 53 32 55"), "OXOXXOXOX", "draw", U("")
+    G U("1509 54 50 57 53 32 55"), "OXOOXXXOX", "draw", U("")
+    G U("1509 55 50 57 53 32 54"), "OXOOXXXOX", "draw", U("")
+    G U("1509 55 50 49 54 32 57"), "XXOOOXXOX", "draw", U("")
+    G U("1509 50 53 49 54 32 55"), "XXOOXXXOO", "draw", U("")
+    G U("1509 55 53 49 54 32 56"), "XOOOXXXXO", "draw", U("")
+    G U("1509 56 53 49 54 32 55"), "XOOOXXXXO", "draw", U("")
+    G U("1509 50 55 49 54 32 57"), "XXOOOXXOX", "draw", U("")
+    G U("1509 56 55 49 54 32 50"), "XXOOOXXXO", "draw", U("")
+    G U("1509 57 55 49 54 32 50"), "XXOOOXXOX", "draw", U("")
+    G U("1509 55 56 49 54 32 50"), "XXOOOXXXO", "draw", U("")
+    G U("1509 55 57 49 54 32 50"), "XXOOOXXOX", "draw", U("")
+    G U("1509 55 49 50 54 32 57"), "XXOOOXXOX", "draw", U("")
+    G U("1509 49 53 50 54 32 55"), "XXOOXXXOO", "draw", U("")
+    G U("1509 55 53 50 54 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 57 53 50 54 32 55"), "OXOOXXXOX", "draw", U("")
+    G U("1509 49 55 50 54 32 57"), "XXOOOXXOX", "draw", U("")
+    G U("1509 56 55 50 54 32 49"), "XXOOOXXXO", "draw", U("")
+    G U("1509 57 55 50 54 32 49"), "XXOOOXXOX", "draw", U("")
+    G U("1509 55 56 50 54 32 49"), "XXOOOXXXO", "draw", U("")
+    G U("1509 50 49 53 54 32 55"), "XXOOXXXOO", "draw", U("")
+    G U("1509 55 49 53 54 32 56"), "XOOOXXXXO", "draw", U("")
+    G U("1509 56 49 53 54 32 55"), "XOOOXXXXO", "draw", U("")
+    G U("1509 49 50 53 54 32 55"), "XXOOXXXOO", "draw", U("")
+    G U("1509 55 50 53 54 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 57 50 53 54 32 55"), "OXOOXXXOX", "draw", U("")
+    G U("1509 50 55 53 54 32 57"), "OXOOXXXOX", "draw", U("")
+    G U("1509 49 56 53 54 32 55"), "XOOOXXXXO", "draw", U("")
+    G U("1509 57 50 55 54 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 56 54 49 55 32 51"), "XOXOOXXXO", "draw", U("")
+    G U("1509 51 57 50 55 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 57 50 55 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 57 50 55 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 49 56 51 55 32 54"), "XOXOOXXXO", "draw", U("")
+    G U("1509 50 57 52 55 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 49 56 54 55 32 51"), "XOXOOXXXO", "draw", U("")
+    G U("1509 54 49 56 55 32 51"), "XOXOOXXXO", "draw", U("")
+    G U("1509 51 50 57 55 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 50 57 55 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 50 57 55 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 52 51 49 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 54 51 49 56 32 52"), "XOXXOXOXO", "draw", U("")
+    G U("1509 57 51 49 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 51 52 49 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 51 53 49 56 32 54"), "XOXOXXOXO", "draw", U("")
+    G U("1509 52 53 49 56 32 51"), "XOXXXOOXO", "draw", U("")
+    G U("1509 54 53 49 56 32 51"), "XOXOXXOXO", "draw", U("")
+    G U("1509 51 54 49 56 32 52"), "XOXXOXOXO", "draw", U("")
+    G U("1509 51 57 49 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 52 49 51 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 54 49 51 56 32 52"), "XOXXOXOXO", "draw", U("")
+    G U("1509 57 49 51 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 49 52 51 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 54 52 51 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 57 52 51 56 32 49"), "XOXXOOOXX", "draw", U("")
+    G U("1509 52 53 51 56 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 49 54 51 56 32 53"), "XOXOXXOXO", "draw", U("")
+    G U("1509 52 54 51 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 53 54 51 56 32 49"), "XOXOXXOXO", "draw", U("")
+    G U("1509 49 57 51 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 52 57 51 56 32 53"), "OOXXXOOXX", "draw", U("")
+    G U("1509 53 57 51 56 32 52"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 49 52 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 49 51 52 56 32 57"), "XOXXOOOXX", "draw", U("")
+    G U("1509 54 51 52 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 57 51 52 56 32 49"), "XOXXOOOXX", "draw", U("")
+    G U("1509 49 53 52 56 32 51"), "XOXXXOOXO", "draw", U("")
+    G U("1509 51 53 52 56 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 57 53 52 56 32 51"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 54 52 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 52 51 53 56 32 57"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 49 54 56 32 52"), "XOXXOXOXO", "draw", U("")
+    G U("1509 49 51 54 56 32 53"), "XOXOXXOXO", "draw", U("")
+    G U("1509 52 51 54 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 53 51 54 56 32 49"), "XOXOXXOXO", "draw", U("")
+    G U("1509 51 52 54 56 32 49"), "XOXXOXOXO", "draw", U("")
+    G U("1509 49 53 54 56 32 51"), "XOXOXXOXO", "draw", U("")
+    G U("1509 51 49 55 56 32 54"), "XOXOOXXXO", "draw", U("")
+    G U("1509 53 49 55 56 32 54"), "XOOOXXXXO", "draw", U("")
+    G U("1509 54 49 55 56 32 53"), "XOOOXXXXO", "draw", U("")
+    G U("1509 49 51 55 56 32 54"), "XOXOOXXXO", "draw", U("")
+    G U("1509 51 49 57 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 49 51 57 56 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 52 51 57 56 32 53"), "OOXXXOOXX", "draw", U("")
+    G U("1509 53 51 57 56 32 52"), "OOXXXOOXX", "draw", U("")
+    G U("1509 51 56 49 57 32 52"), "XOXXOOOXX", "draw", U("")
+    G U("1509 52 51 50 57 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 52 50 57 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 55 54 50 57 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 55 50 57 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 55 50 57 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 55 50 57 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 50 52 51 57 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 52 51 57 32 50"), "OXXXOOXOX", "draw", U("")
+    G U("1509 56 52 51 57 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 50 52 57 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 50 51 52 57 32 56"), "OXXXOOOXX", "draw", U("")
+    G U("1509 55 51 52 57 32 50"), "OXXXOOXOX", "draw", U("")
+    G U("1509 56 51 52 57 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 50 55 52 57 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 56 52 57 32 50"), "OXXXOOOXX", "draw", U("")
+    G U("1509 50 55 54 57 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 51 50 55 57 32 52"), "OXXXOOXOX", "draw", U("")
+    G U("1509 52 50 55 57 32 54"), "OXOXOXXOX", "draw", U("")
+    G U("1509 54 50 55 57 32 52"), "OXOXOXXOX", "draw", U("")
+    G U("1509 52 51 56 57 32 50"), "OXXXOOOXX", "draw", U("")
 End Sub
 
