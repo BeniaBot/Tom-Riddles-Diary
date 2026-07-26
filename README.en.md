@@ -17,7 +17,7 @@ Word swaps in as you type. It even works on a fully offline / locked-down machin
 
 ## ✨ Features
 
-- 💬 **~70 chat responses** — type natural Hebrew sentences ("מה נשמע", "מי אתה",
+- 💬 **~280 chat sentences** — type natural Hebrew sentences ("מה נשמע", "מי אתה",
   "ספר לי בדיחה", "אני עצוב"...) and get replies that sound like a real assistant.
 - ❓ **Follow-up questions** — "בוא נשחק" asks whether you want to play (yes/no),
   riddles reveal their answer on request, and every finished game offers a rematch.
@@ -133,7 +133,7 @@ automatically.
 - Tom Riddle only edits your **AutoCorrect** entries; the uninstaller reverts them.
 - **Boards are real Word tables** (formatted AutoCorrect entries) — red X, blue O,
   real borders. Looks great in any font; no document setup needed.
-- Install takes **~2-3 minutes** (1,120 tables get registered) and ends with a popup
+- Install takes **~3-4 minutes** (~1,430 formatted entries get registered) and ends with a popup
   reporting how many boards were saved. Uninstall is fast.
 - This is a toy/prank. Use it to have fun. 🙂
 
