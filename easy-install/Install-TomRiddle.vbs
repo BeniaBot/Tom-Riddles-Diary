@@ -144,11 +144,19 @@ Sub SetBoard(raw, status, tok)
     Else
         sr.Text = StatusText(status)
     End If
+    ' triple invisibility for the token: Hidden + 1pt + white + NoProofing
     Set sr = tDoc.Paragraphs.Last.Range
     sr.Font.Hidden = False
+    sr.Font.Size = 12
+    sr.Font.Color = 0
     If Len(tok) > 0 Then
         Set tk = tDoc.Range(sr.End - 1 - Len(tok), sr.End - 1)
         tk.Font.Hidden = True
+        tk.Font.Size = 1
+        tk.Font.Color = 16777215
+        On Error Resume Next
+        tk.NoProofing = True
+        On Error GoTo 0
     End If
 End Sub
 Sub AddG(nm, raw, status, tok)
@@ -200,15 +208,15 @@ AddChat U("1510 1488 1496 32 1488 1514 1492 32 1488 1502 1497 1514 1497"), U("14
 AddChat U("1510 1488 1496 32 1488 1514 1492 32 1488 1493 1492 1489 32 1495 1514 1493 1500 1497 1501"), U("1502 1497 32 1500 1488 32 1488 1493 1492 1489 32 1495 1514 1493 1500 1497 1501 63 32 1497 1510 1493 1512 1497 1501 32 1502 1511 1505 1497 1502 1497 1501 46 32 32 58 41")
 AddChat U("1510 1488 1496 32 1506 1494 1512 1492"), U("1488 1508 1513 1512 32 1500 1513 1493 1495 1495 32 1488 1493 32 1500 1513 1495 1511 33 32 1504 1505 1492 58 32 34 1510 1488 1496 32 1505 1508 1512 32 1489 1491 1497 1495 1492 34 32 1488 1493 32 34 1489 1493 1488 32 1504 1513 1495 1511 34 46 32 32 58 41")
 BoardDoc
-AddG U("1509 1509 49"), "X   O    ", "play", U("1509 49")
-AddG U("1509 1509 50"), "OX       ", "play", U("1509 50")
-AddG U("1509 1509 51"), "  X O    ", "play", U("1509 51")
-AddG U("1509 1509 52"), "O  X     ", "play", U("1509 52")
-AddG U("1509 1509 53"), "O   X    ", "play", U("1509 53")
-AddG U("1509 1509 54"), "  O  X   ", "play", U("1509 54")
-AddG U("1509 1509 55"), "    O X  ", "play", U("1509 55")
-AddG U("1509 1509 56"), " O     X ", "play", U("1509 56")
-AddG U("1509 1509 57"), "    O   X", "play", U("1509 57")
+AddG U("1509 1509 32 49"), "X   O    ", "play", U("1509 49")
+AddG U("1509 1509 32 50"), "OX       ", "play", U("1509 50")
+AddG U("1509 1509 32 51"), "  X O    ", "play", U("1509 51")
+AddG U("1509 1509 32 52"), "O  X     ", "play", U("1509 52")
+AddG U("1509 1509 32 53"), "O   X    ", "play", U("1509 53")
+AddG U("1509 1509 32 54"), "  O  X   ", "play", U("1509 54")
+AddG U("1509 1509 32 55"), "    O X  ", "play", U("1509 55")
+AddG U("1509 1509 32 56"), " O     X ", "play", U("1509 56")
+AddG U("1509 1509 32 57"), "    O   X", "play", U("1509 57")
 AddG U("1509 49 32 50"), "XXO O    ", "play", U("1509 50 49")
 AddG U("1509 49 32 51"), "XOX O    ", "play", U("1509 51 49")
 AddG U("1509 49 32 52"), "X  XO O  ", "play", U("1509 52 49")

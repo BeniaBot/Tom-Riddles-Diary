@@ -129,13 +129,15 @@ TS="ץ"                              # carry-token marker (final tsadi)
 LEGACY_PFX_CODES="1514 1514 1514"   # old "תתת" scheme - swept on install/uninstall
 PLAY_ALIAS_CODES="1489 1493 1488 32 1504 1513 1495 1511"  # "בוא נשחק" -> opens board
 
-def game_name(h):
-    """AutoCorrect entry name for the move that PRODUCED history h."""
-    if len(h)==1: return TS+TS+h                 # opener token TSTS + digit, no space
-    return TS + h[:-1][::-1] + " " + h[-1]       # parent token + carried space + digit
 def game_token(h):
     """Hidden carry token embedded at the end of board h (play boards only)."""
     return TS + h[::-1] if h else TS+TS
+def game_name(h):
+    """AutoCorrect entry name for the move that PRODUCED history h.
+    ALWAYS token + space + digit: every fire (the opener included) leaves its
+    delimiter space after the inserted token, so the space is part of the next
+    trigger.  Verified live - a spaceless first-move name never matches."""
+    return game_token(h[:-1]) + " " + h[-1]
 
 # ===== board table styling (wdColor = R + G*256 + B*65536) =====
 def _rgb(r,g,b): return r + g*256 + b*65536
@@ -315,12 +317,21 @@ def build_setup():
     w("    Else\n")
     w("        sr.Text = StatusText(status)\n")
     w("    End If\n")
-    w("    ' un-hide the whole line, then hide only the carry token\n")
+    w("    ' reset the line, then make ONLY the carry token invisible.\n")
+    w("    ' Triple defense - real firing was seen stripping Hidden alone:\n")
+    w("    ' Hidden + 1pt + white + no spellcheck squiggle.\n")
     w("    Set sr = tDoc.Paragraphs.Last.Range\n")
     w("    sr.Font.Hidden = False\n")
+    w("    sr.Font.Size = %d\n"%STATUS_FONT)
+    w("    sr.Font.Color = 0\n")
     w("    If Len(tok) > 0 Then\n")
     w("        Set tk = tDoc.Range(sr.End - 1 - Len(tok), sr.End - 1)\n")
     w("        tk.Font.Hidden = True\n")
+    w("        tk.Font.Size = 1\n")
+    w("        tk.Font.Color = 16777215\n")
+    w("        On Error Resume Next\n")
+    w("        tk.NoProofing = True\n")
+    w("        On Error GoTo 0\n")
     w("    End If\n")
     w("End Sub\n\n")
     w("Private Sub G(ByVal nm As String, ByVal raw As String, ByVal status As String, ByVal tok As String)\n")
@@ -580,11 +591,19 @@ def build_vbs(install=True):
         w("    Else\n")
         w("        sr.Text = StatusText(status)\n")
         w("    End If\n")
+        w("    ' triple invisibility for the token: Hidden + 1pt + white + NoProofing\n")
         w("    Set sr = tDoc.Paragraphs.Last.Range\n")
         w("    sr.Font.Hidden = False\n")
+        w("    sr.Font.Size = %d\n"%STATUS_FONT)
+        w("    sr.Font.Color = 0\n")
         w("    If Len(tok) > 0 Then\n")
         w("        Set tk = tDoc.Range(sr.End - 1 - Len(tok), sr.End - 1)\n")
         w("        tk.Font.Hidden = True\n")
+        w("        tk.Font.Size = 1\n")
+        w("        tk.Font.Color = 16777215\n")
+        w("        On Error Resume Next\n")
+        w("        tk.NoProofing = True\n")
+        w("        On Error GoTo 0\n")
         w("    End If\n")
         w("End Sub\n")
         w("Sub AddG(nm, raw, status, tok)\n")

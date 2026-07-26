@@ -144,12 +144,21 @@ Private Sub SetBoard(ByVal raw As String, ByVal status As String, ByVal tok As S
     Else
         sr.Text = StatusText(status)
     End If
-    ' un-hide the whole line, then hide only the carry token
+    ' reset the line, then make ONLY the carry token invisible.
+    ' Triple defense - real firing was seen stripping Hidden alone:
+    ' Hidden + 1pt + white + no spellcheck squiggle.
     Set sr = tDoc.Paragraphs.Last.Range
     sr.Font.Hidden = False
+    sr.Font.Size = 12
+    sr.Font.Color = 0
     If Len(tok) > 0 Then
         Set tk = tDoc.Range(sr.End - 1 - Len(tok), sr.End - 1)
         tk.Font.Hidden = True
+        tk.Font.Size = 1
+        tk.Font.Color = 16777215
+        On Error Resume Next
+        tk.NoProofing = True
+        On Error GoTo 0
     End If
 End Sub
 
@@ -244,15 +253,15 @@ Private Sub InstallOpener()
 End Sub
 
 Private Sub InstallGame1()
-    G U("1509 1509 49"), "X   O    ", "play", U("1509 49")
-    G U("1509 1509 50"), "OX       ", "play", U("1509 50")
-    G U("1509 1509 51"), "  X O    ", "play", U("1509 51")
-    G U("1509 1509 52"), "O  X     ", "play", U("1509 52")
-    G U("1509 1509 53"), "O   X    ", "play", U("1509 53")
-    G U("1509 1509 54"), "  O  X   ", "play", U("1509 54")
-    G U("1509 1509 55"), "    O X  ", "play", U("1509 55")
-    G U("1509 1509 56"), " O     X ", "play", U("1509 56")
-    G U("1509 1509 57"), "    O   X", "play", U("1509 57")
+    G U("1509 1509 32 49"), "X   O    ", "play", U("1509 49")
+    G U("1509 1509 32 50"), "OX       ", "play", U("1509 50")
+    G U("1509 1509 32 51"), "  X O    ", "play", U("1509 51")
+    G U("1509 1509 32 52"), "O  X     ", "play", U("1509 52")
+    G U("1509 1509 32 53"), "O   X    ", "play", U("1509 53")
+    G U("1509 1509 32 54"), "  O  X   ", "play", U("1509 54")
+    G U("1509 1509 32 55"), "    O X  ", "play", U("1509 55")
+    G U("1509 1509 32 56"), " O     X ", "play", U("1509 56")
+    G U("1509 1509 32 57"), "    O   X", "play", U("1509 57")
     G U("1509 49 32 50"), "XXO O    ", "play", U("1509 50 49")
     G U("1509 49 32 51"), "XOX O    ", "play", U("1509 51 49")
     G U("1509 49 32 52"), "X  XO O  ", "play", U("1509 52 49")
