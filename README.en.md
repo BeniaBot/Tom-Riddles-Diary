@@ -17,8 +17,10 @@ Word swaps in as you type. It even works on a fully offline / locked-down machin
 
 ## ✨ Features
 
-- 💬 **30+ chat responses** on all sorts of topics — greetings, jokes, small talk —
-  all phrased to sound like a real assistant.
+- 💬 **~70 chat responses** — type natural Hebrew sentences ("מה נשמע", "מי אתה",
+  "ספר לי בדיחה", "אני עצוב"...) and get replies that sound like a real assistant.
+- ❓ **Follow-up questions** — "בוא נשחק" asks whether you want to play (yes/no),
+  riddles reveal their answer on request, and every finished game offers a rematch.
 - 🎮 **Full Tic-Tac-Toe** against a **perfect (unbeatable) computer** — all 1,120
   reachable board states are pre-computed. Best you can do is a draw.
 - 🌐 **100% offline & local.** Works with network/macros blocked.
@@ -53,23 +55,28 @@ Word swaps in as you type. It even works on a fully offline / locked-down machin
 Type the phrase, then a **space**, and Word replaces it.
 
 **Chat** — try:
-- `היי צאט` — a greeting
-- `צאט ספר בדיחה` — a joke
-- `צאט מה משמעות החיים`
-- `צאט משעמם לי`
+- `מה נשמע` — small talk
+- `מי אתה` / `איך קוראים לך` — identity
+- `ספר לי בדיחה` — a joke
+- `תן חידה` — a riddle (type `מה התשובה` for the answer)
+- `אני עצוב` — empathy mode
 
 (Full list: [`docs/replacements.txt`](docs/replacements.txt))
 
 **Tic-Tac-Toe:**
-- Type **`בוא נשחק`** → a board (a real table) appears. You are **X**, the computer
-  is **O**.
+- Type **`בוא נשחק`** → it says Tic-Tac-Toe is all it knows for now and asks if
+  you want to play. Type **`כן`** (or `יאללה`/`בטח`) and a space → a board (a real
+  table) appears. You are **X**, the computer is **O**.
 - Each turn: at the end of the **"המהלך שלך הוא- "** line, type just the **cell
   digit** (as shown on the board) and a **space** — the next board appears by
   itself. **No codes, nothing to remember.**
-- The digit you type may not show on screen — that's intentional, part of the magic.
-- Typed a wrong digit (occupied cell)? **Backspace** and type again.
+- When a game ends it offers a rematch — `כן` + space opens a fresh board.
+- What you type after a question/board may not show on screen — that's intentional.
+- Typed a wrong digit (occupied cell)? **Backspace** and type again. **Always a
+  space, never Enter.**
 
-Your audience just sees boards appearing "on their own" and the "AI" winning. 😈
+Your audience sees a live conversation, boards appearing "on their own", and the
+"AI" winning. 😈
 
 ---
 

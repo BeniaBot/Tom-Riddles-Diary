@@ -100,6 +100,55 @@ CHAT=[
  ("צאט אתה אמיתי","אני כאן ומדבר איתך, לא?  :)"),
  ("צאט אתה אוהב חתולים","מי לא אוהב חתולים? יצורים מקסימים.  :)"),
  ("צאט עזרה",'אפשר לשוחח או לשחק! נסה: "צאט ספר בדיחה" או "בוא נשחק".  :)'),
+ # --- v0.3: natural, no-keyword sentences (the "classic almost-random" set) ---
+ ("מה נשמע","הכל מעולה אצלי! ומה איתך?  :)"),
+ ("מה קורה","שמח שאתה כאן! איך היום שלך?  :)"),
+ ("מה חדש","כל יום אני לומד משהו. ספר לי אתה -- מה מתחדש אצלך?  :)"),
+ ("מה שלומך","מצוין, תודה ששאלת! ואתה?  :)"),
+ ("מה העניינים","הכול טוב, ורק ישתפר!  :)"),
+ ("בוקר טוב","בוקר אור! שיהיה לך יום נהדר.  :)"),
+ ("ערב טוב","ערב נפלא! איך עבר עליך היום?  :)"),
+ ("לילה טוב","חלומות פז! נתראה מחר.  :)"),
+ ("שבת שלום","שבת מבורכת ורגועה!  :)"),
+ ("חג שמח","חג נפלא ומלא אור!  :)"),
+ ("מי אתה","העוזר הדיגיטלי החדש שלך! תשאל אותי כל דבר.  :)"),
+ ("איך קוראים לך","קוראים לי תום. נעים מאוד!  :)"),
+ ("מה השם שלך","תום. לשירותך!  :)"),
+ ("בן כמה אתה","צעיר ברוחי, ותיק בידע.  :)"),
+ ("איפה אתה גר","בתוך המחשב שלך. כתובת מצוינת!  :)"),
+ ("מי יצר אותך","מתכנת גאון אחד עם המון סבלנות.  :)"),
+ ("אתה רובוט","אני עוזר דיגיטלי -- רובוט עם נשמה.  :)"),
+ ("אתה בן אדם","לא בדיוק... אבל אני מקשיב כמו חבר.  :)"),
+ ("יש לך רגשות","יש לי המון חיבה למי שמדבר איתי.  :)"),
+ ("אתה חכם","משתדל! תבחן אותי.  :)"),
+ ("ספר לי בדיחה","מה עושה פיל כשהוא נופל? -- פלאפל!  :D"),
+ ("ספר סיפור","היה היה מסמך ריק, שפגש כותב מוכשר. את ההמשך אתה כותב ממש עכשיו.  :)"),
+ ("שיר לי שיר","לה לה לה... בוא נודה בזה, אני טוב יותר במילים.  :)"),
+ ("אני אוהב אותך","וואו, איזה מתוק! גם אני מחבב אותך מאוד.  :)"),
+ ("אתה אוהב אותי","בטח! אתה האדם האהוב עליי כאן.  :)"),
+ ("מה דעתך עליי","אתה נשמע לי אדם סקרן ומגניב.  :)"),
+ ("מי הכי חכם בעולם","מי ששואל שאלות. כלומר -- אתה.  :)"),
+ ("מה הצבע האהוב עליך","כחול עמוק. צבע של שמיים פתוחים.  :)"),
+ ("מה האוכל האהוב עליך","אני על דיאטת נתונים, אבל פיצה נשמעת לי מושלם.  :)"),
+ ("אתה אוהב מוזיקה","מאוד! יש קצב טוב בשיחה שלנו.  :)"),
+ ("מה השעה","הזמן הטוב ביותר: עכשיו.  :)"),
+ ("כמה זה אחת ועוד אחת","שתיים! תן לי אתגר אמיתי.  :)"),
+ ("כמה זה שתיים ועוד שתיים","ארבע, בלי להתאמץ.  :)"),
+ ("מה בירת צרפת","פריז! עיר האורות.  :)"),
+ ("האם יש חיים במאדים","עוד לא מצאו, אבל אני אופטימי.  :)"),
+ ("תן לי טיפ","שמור על סקרנות -- היא פותחת כל דלת.  :)"),
+ ("איך להצליח בחיים","צעד קטן כל יום. פשוט, קשה, וזה כל הסוד.  :)"),
+ ("אני עצוב","אני כאן איתך. קח נשימה עמוקה -- מחר זה ייראה אחרת.  :)"),
+ ("אני שמח","איזה כיף! שמחה מדבקת -- הדבקת גם אותי.  :)"),
+ ("אני כועס","מותר לכעוס. נשום עמוק, ספור עד עשר, ואני פה.  :)"),
+ ("אני רעב","תפסיק לקרוא ולך לאכול משהו טעים!  :)"),
+ ("משעמם לי","בוא נתקן את זה! כתוב: בוא נשחק.  :)"),
+ ("אתה יכול לעזור לי","בשמחה! ספר לי מה אתה צריך.  :)"),
+ ("מה אתה יודע לעשות","לדבר, לייעץ, לספר בדיחות -- ולנצח באיקס עיגול.  ;)"),
+ ("תגיד שלום","שלום שלום!  :)"),
+ ("להתראות","להת! מחכה כבר לפעם הבאה.  :)"),
+ ("מי המלך","אתה, כמובן.  :)"),
+ ("מכבי או הפועל","אני אובייקטיבי לחלוטין: מי שמנצח.  :)"),
 ]
 def _strip_prefix_conflicts(chat):
     trigs=[nm for nm,_ in chat]; drop=set()
@@ -118,16 +167,16 @@ MB_INFO=64+MB_RTL
 
 # board prompts: prank-safe, contain NO trigger text
 P_MOVE="המהלך שלך הוא- "          # ends every live board; token follows hidden
-P_LOSE="ניצחתי! משחק טוב.  :)"
-P_DRAW="תיקו! משחק צמוד.  :)"
-P_WIN="ניצחת! כל הכבוד!  :)"
+# terminal boards end with a rematch question + hidden question-token
+P_LOSE="ניצחתי! משחק טוב. רוצה עוד משחק? "
+P_DRAW="תיקו! משחק צמוד. רוצה עוד משחק? "
+P_WIN="ניצחת?! כל הכבוד! עוד משחק? "
 
 # used only for docs/replacements.txt (presenter reference sketch)
 BOX_V=0x2502   # │
 
 TS="ץ"                              # carry-token marker (final tsadi)
 LEGACY_PFX_CODES="1514 1514 1514"   # old "תתת" scheme - swept on install/uninstall
-PLAY_ALIAS_CODES="1489 1493 1488 32 1504 1513 1495 1511"  # "בוא נשחק" -> opens board
 
 def game_token(h):
     """Hidden carry token embedded at the end of board h (play boards only)."""
@@ -138,6 +187,44 @@ def game_name(h):
     delimiter space after the inserted token, so the space is part of the next
     trigger.  Verified live - a spaceless first-move name never matches."""
     return game_token(h[:-1]) + " " + h[-1]
+
+# ===== v0.3: hidden-token yes/no questions (conversation branches) =====
+# Question tokens use the digit 0, which NEVER appears in game histories
+# (cells are 1-9) - so they can never collide with a board token.
+QTOK_PLAY =TS+"0"    # asked by "בוא נשחק"
+QTOK_AGAIN=TS+"00"   # asked by every finished game (rematch)
+QTOK_R1   =TS+"01"   # riddle 1
+QTOK_R2   =TS+"02"   # riddle 2
+
+# token-ended question entries: (trigger, visible text incl. trailing space, token)
+CHAT_Q=[
+ ("בוא נשחק","אני יודע בינתיים לשחק רק איקס-עיגול. רוצה לשחק? ",QTOK_PLAY),
+ ("תן חידה","מה שייך לך, אבל אחרים משתמשים בו הרבה יותר ממך? (כתוב: מה התשובה) ",QTOK_R1),
+ ("עוד חידה","ככל שלוקחים ממני יותר, כך אני גדל ומעמיק. מה אני? (כתוב: מה התשובה) ",QTOK_R2),
+]
+# plain replies to question answers (name = question-token + " " + typed answer)
+QA=[
+ (QTOK_PLAY+" לא","אין בעיה! אפשר פשוט לדבר. נסה: ספר לי בדיחה.  :)"),
+ (QTOK_AGAIN+" לא","היה כיף לשחק איתך! אפשר להמשיך לדבר.  :)"),
+ (QTOK_R1+" מה התשובה","השם שלך!  :)  רוצה עוד? כתוב: עוד חידה"),
+ (QTOK_R2+" מה התשובה","בור!  :)"),
+]
+# answers that open a fresh empty board (value = the board itself)
+YES_WORDS=["כן","יאללה","בטח"]
+BOARD_ANSWERS=[q+" "+y for q in (QTOK_PLAY,QTOK_AGAIN) for y in YES_WORDS]
+
+# loop-prevention guard: an entry whose value contains its own name never fires
+def _chk(nm,val):
+    assert nm not in val, "self-loop trigger: %r"%nm
+for _nm,_val in CHAT: _chk(_nm,_val)
+for _nm,_val,_tok in CHAT_Q: _chk(_nm,_val+_tok)
+for _nm,_val in QA: _chk(_nm,_val)
+_board_line=P_MOVE+game_token("")
+for _nm in BOARD_ANSWERS: _chk(_nm,_board_line)
+for _k in [k for k in entries if k]:
+    _st=entries[_k][1]
+    _line=(P_MOVE+game_token(_k)) if _st=="play" else {"lose":P_LOSE,"draw":P_DRAW,"win":P_WIN}[_st]+QTOK_AGAIN
+    _chk(game_name(_k),_line)
 
 # ===== board table styling (wdColor = R + G*256 + B*65536) =====
 def _rgb(r,g,b): return r + g*256 + b*65536
@@ -188,30 +275,24 @@ def _status_cases(w,indent,fn):
     for st,txt in (("play",P_MOVE),("lose",P_LOSE),("draw",P_DRAW),("win",P_WIN)):
         w('%sCase "%s"\n%s    %s = U("%s")\n'%(indent,st,indent,fn,codes(txt)))
 
-# game-name recognizer emitted into VBA and VBS (shared logic):
-# tsadi-scheme names (tsadi first, then only tsadi/digits/space) OR legacy
-# taf-taf-taf prefix.  Used by the install pre-sweep, the uninstall safety
-# net and the post-install count.
+# game-name recognizer emitted into VBA and VBS (shared logic).
+# Any name that STARTS with final-tsadi is ours by construction (board
+# transitions, question-answer entries) - Hebrew words never begin with a
+# final letter, so false positives are practically impossible.  Legacy
+# taf-taf-taf names are also matched so old installs get swept.
 def _is_game_fn(w,vba):
     d=w
     if vba:
         d("Private Function IsGameName(ByVal nm As String) As Boolean\n")
-        d("    Dim j As Long, c As String\n")
     else:
         d("Function IsGameName(nm)\n")
-        d("    Dim j, c\n")
         d("    IsGameName = False\n")
     d("    If Len(nm) < 2 Then Exit Function\n")
     d('    If Left(nm, 3) = U("%s") Then\n'%LEGACY_PFX_CODES)
     d("        IsGameName = True\n")
     d("        Exit Function\n")
     d("    End If\n")
-    d('    If Left(nm, 1) <> U("%s") Then Exit Function\n'%codes(TS))
-    d("    For j = 2 To Len(nm)\n")
-    d("        c = Mid(nm, j, 1)\n")
-    d('        If Not (c = " " Or c = U("%s") Or (c >= "0" And c <= "9")) Then Exit Function\n'%codes(TS))
-    d("    Next%s\n"%(" j" if vba else ""))
-    d("    IsGameName = True\n")
+    d('    IsGameName = (Left(nm, 1) = U("%s"))\n'%codes(TS))
     d("End Function\n")
 
 def build_setup():
@@ -254,7 +335,31 @@ def build_setup():
     w("    Set r = tDoc.Content\n")
     w("    r.End = r.End - 1\n")
     w("    r.Text = val\n")
+    w("    Set r = tDoc.Content\n")
+    w("    r.End = r.End - 1\n")
+    w("    r.Font.Hidden = False\n")
     w("    AddRich nm, tDoc.Content\n")
+    w("End Sub\n\n")
+    w("' question entry: visible text + hidden question-token; the range ends AT\n")
+    w("' the token so the typed answer lands right next to it\n")
+    w("Private Sub AddChatQ(ByVal nm As String, ByVal val As String, ByVal tok As String)\n")
+    w("    Dim r As Range, tk As Range\n")
+    w("    Set r = tDoc.Content\n")
+    w("    r.End = r.End - 1\n")
+    w("    r.Text = val & tok\n")
+    w("    Set r = tDoc.Content\n")
+    w("    r.End = r.End - 1\n")
+    w("    r.Font.Hidden = False\n")
+    w("    r.Font.Size = 11\n")
+    w("    r.Font.Color = 0\n")
+    w("    Set tk = tDoc.Range(r.End - Len(tok), r.End)\n")
+    w("    tk.Font.Hidden = True\n")
+    w("    tk.Font.Size = 1\n")
+    w("    tk.Font.Color = 16777215\n")
+    w("    On Error Resume Next\n")
+    w("    tk.NoProofing = True\n")
+    w("    On Error GoTo 0\n")
+    w("    AddRich nm, tDoc.Range(0, tDoc.Content.End - 1)\n")
     w("End Sub\n\n")
     w("Private Sub BoardDoc()\n")
     w("    ' NO ParagraphFormat calls here: on a windowless document they\n")
@@ -312,11 +417,9 @@ def build_setup():
     w("    Next i\n")
     w("    Set sr = tDoc.Paragraphs.Last.Range\n")
     w("    sr.End = sr.End - 1\n")
-    w("    If Len(tok) > 0 Then\n")
-    w("        sr.Text = StatusText(\"play\") & tok\n")
-    w("    Else\n")
-    w("        sr.Text = StatusText(status)\n")
-    w("    End If\n")
+    w("    ' play boards carry the game token; finished boards carry the\n")
+    w("    ' rematch-question token - every board ends with SOME hidden token\n")
+    w("    sr.Text = StatusText(status) & tok\n")
     w("    ' reset the line, then make ONLY the carry token invisible.\n")
     w("    ' Triple defense - real firing was seen stripping Hidden alone:\n")
     w("    ' Hidden + 1pt + white + no spellcheck squiggle.\n")
@@ -354,9 +457,10 @@ def build_setup():
     w("    ' invisible document it reproducibly crashes Word (RPC failure).\n")
     w("    Set tDoc = Documents.Add(Visible:=False)\n")
     w("    InstallChat\n")
+    w("    InstallQuestions\n")
     w("    BoardDoc\n")
     for idx in range(len(chunks)): w("    InstallGame%d\n"%(idx+1))
-    w("    InstallOpener\n")
+    w("    InstallBoardAnswers\n")
     w("    tDoc.Saved = True\n")
     w("    tDoc.Close 0\n")
     w("    Set tDoc = Nothing\n")
@@ -387,19 +491,29 @@ def build_setup():
     w("Private Sub InstallChat()\n")
     w("    ' no alignment set: the template default paragraph (RTL Hebrew\n")
     w("    ' profile) is already right-aligned, and ParagraphFormat writes\n")
-    w("    ' crash a windowless document anyway\n")
+    w("    ' crash a windowless document anyway.\n")
+    w("    ' Plain entries FIRST, token entries last (InstallQuestions) so no\n")
+    w("    ' hidden/tiny run formatting leaks into plain rewrites.\n")
     for nm,val in CHAT:
         w("    AddChat %s, %s\n"%(vstr(nm),vstr(val)))
+    for nm,val in QA:
+        w("    AddChat %s, %s\n"%(vstr(nm),vstr(val)))
     w("End Sub\n\n")
-    w("Private Sub InstallOpener()\n")
+    w("Private Sub InstallQuestions()\n")
+    for nm,val,tok in CHAT_Q:
+        w("    AddChatQ %s, %s, U(\"%s\")\n"%(vstr(nm),vstr(val),codes(tok)))
+    w("End Sub\n\n")
+    w("Private Sub InstallBoardAnswers()\n")
+    w("    ' one empty board, registered under every yes-answer name\n")
     w('    SetBoard "         ", "play", U("%s")\n'%codes(game_token("")))
-    w('    AddRich U("%s"), tDoc.Range(0, tDoc.Content.End - 1)\n'%PLAY_ALIAS_CODES)
+    for nm in BOARD_ANSWERS:
+        w('    AddRich U("%s"), tDoc.Range(0, tDoc.Content.End - 1)\n'%codes(nm))
     w("End Sub\n\n")
     for idx,ch in enumerate(chunks):
         w("Private Sub InstallGame%d()\n"%(idx+1))
         for key in ch:
             raw,status=entries[key]
-            tok=game_token(key) if status=="play" else ""
+            tok=game_token(key) if status=="play" else QTOK_AGAIN
             w('    G U("%s"), "%s", "%s", U("%s")\n'%(codes(game_name(key)),raw,status,codes(tok)))
         w("End Sub\n\n")
     return o.getvalue()
@@ -445,7 +559,10 @@ def build_remove():
     w("End Sub\n\n")
     w("Private Sub RemoveChat()\n")
     for nm,_ in CHAT: w("    DelE %s\n"%vstr(nm))
-    w('    DelE U("%s")\n'%PLAY_ALIAS_CODES)  # "בוא נשחק" opener
+    for nm,_,_ in CHAT_Q: w("    DelE %s\n"%vstr(nm))
+    for nm,_ in QA: w("    DelE %s\n"%vstr(nm))
+    for nm in BOARD_ANSWERS: w("    DelE %s\n"%vstr(nm))
+    for nm in sorted(_DROPPED): w("    DelE %s   ' dropped/legacy trigger\n"%vstr(nm))
     w("End Sub\n\n")
     for idx,ch in enumerate(chunks):
         w("Private Sub RemoveGame%d()\n"%(idx+1))
@@ -468,7 +585,7 @@ def build_diag():
     w('    msg = "Total AutoCorrect entries: " & n & vbCrLf\n')
     w('    msg = msg & "Game entries: " & g & vbCrLf & vbCrLf\n')
     w('    v = "(NOT FOUND)"\n    On Error Resume Next\n')
-    w('    Set e = Application.AutoCorrect.Entries(U("%s"))\n'%PLAY_ALIAS_CODES)
+    w('    Set e = Application.AutoCorrect.Entries(U("%s"))\n'%codes("בוא נשחק"))
     w("    On Error GoTo 0\n")
     w('    If Not e Is Nothing Then v = "exists, RichText=" & e.RichText\n')
     w('    msg = msg & "Opener entry: " & v\n')
@@ -529,7 +646,30 @@ def build_vbs(install=True):
         w("    Set r = tDoc.Content\n")
         w("    r.End = r.End - 1\n")
         w("    r.Text = val\n")
+        w("    Set r = tDoc.Content\n")
+        w("    r.End = r.End - 1\n")
+        w("    r.Font.Hidden = False\n")
         w("    AddRich nm, tDoc.Content\n")
+        w("End Sub\n")
+        w("' question entry: visible text + hidden question-token; range ends AT the token\n")
+        w("Sub AddChatQ(nm, val, tok)\n")
+        w("    Dim r, tk\n")
+        w("    Set r = tDoc.Content\n")
+        w("    r.End = r.End - 1\n")
+        w("    r.Text = val & tok\n")
+        w("    Set r = tDoc.Content\n")
+        w("    r.End = r.End - 1\n")
+        w("    r.Font.Hidden = False\n")
+        w("    r.Font.Size = 11\n")
+        w("    r.Font.Color = 0\n")
+        w("    Set tk = tDoc.Range(r.End - Len(tok), r.End)\n")
+        w("    tk.Font.Hidden = True\n")
+        w("    tk.Font.Size = 1\n")
+        w("    tk.Font.Color = 16777215\n")
+        w("    On Error Resume Next\n")
+        w("    tk.NoProofing = True\n")
+        w("    On Error GoTo 0\n")
+        w("    AddRich nm, tDoc.Range(0, tDoc.Content.End - 1)\n")
         w("End Sub\n")
         w("Sub BoardDoc()\n")
         w("    ' NO ParagraphFormat calls: they crash Word on a windowless doc.\n")
@@ -586,11 +726,8 @@ def build_vbs(install=True):
         w("    Next\n")
         w("    Set sr = tDoc.Paragraphs.Last.Range\n")
         w("    sr.End = sr.End - 1\n")
-        w("    If Len(tok) > 0 Then\n")
-        w('        sr.Text = StatusText("play") & tok\n')
-        w("    Else\n")
-        w("        sr.Text = StatusText(status)\n")
-        w("    End If\n")
+        w("    ' play boards carry the game token; finished boards the rematch token\n")
+        w("    sr.Text = StatusText(status) & tok\n")
         w("    ' triple invisibility for the token: Hidden + 1pt + white + NoProofing\n")
         w("    Set sr = tDoc.Paragraphs.Last.Range\n")
         w("    sr.Font.Hidden = False\n")
@@ -632,13 +769,18 @@ def build_vbs(install=True):
         w("' no alignment set: template default (RTL profile) is already right-\n")
         w("' aligned, and ParagraphFormat writes crash a windowless document\n")
         for nm,val in CHAT: w("AddChat %s, %s\n"%(vstr(nm),vstr(val)))
+        for nm,val in QA: w("AddChat %s, %s\n"%(vstr(nm),vstr(val)))
+        for nm,val,tok in CHAT_Q:
+            w("AddChatQ %s, %s, U(\"%s\")\n"%(vstr(nm),vstr(val),codes(tok)))
         w("BoardDoc\n")
         for key in GAME_KEYS:
             raw,status=entries[key]
-            tok=game_token(key) if status=="play" else ""
+            tok=game_token(key) if status=="play" else QTOK_AGAIN
             w('AddG U("%s"), "%s", "%s", U("%s")\n'%(codes(game_name(key)),raw,status,codes(tok)))
+        w("' one empty board under every yes-answer name\n")
         w('SetBoard "         ", "play", U("%s")\n'%codes(game_token("")))
-        w('AddRich U("%s"), tDoc.Range(0, tDoc.Content.End - 1)\n'%PLAY_ALIAS_CODES)
+        for nm in BOARD_ANSWERS:
+            w('AddRich U("%s"), tDoc.Range(0, tDoc.Content.End - 1)\n'%codes(nm))
         w("tDoc.Saved = True\ntDoc.Close 0\nSet tDoc = Nothing\n")
         w("Dim i2, n\nn = 0\n")
         w("For i2 = 1 To word.AutoCorrect.Entries.Count\n")
@@ -663,7 +805,10 @@ def build_vbs(install=True):
         w("End Sub\n")
         w('Announce U("%s")\n'%codes("מסיר את "+NAME_HE+"... זה לוקח פחות מדקה."))
         for nm,_ in CHAT: w("DelE %s\n"%vstr(nm))
-        w('DelE U("%s")\n'%PLAY_ALIAS_CODES)
+        for nm,_,_ in CHAT_Q: w("DelE %s\n"%vstr(nm))
+        for nm,_ in QA: w("DelE %s\n"%vstr(nm))
+        for nm in BOARD_ANSWERS: w("DelE %s\n"%vstr(nm))
+        for nm in sorted(_DROPPED): w("DelE %s\n"%vstr(nm))
         for key in GAME_KEYS:
             w('DelE U("%s")\n'%codes(game_name(key)))
         w("' safety net: current scheme + legacy prefixes\n")
@@ -696,15 +841,22 @@ def bl(raw,status):
     return "%s  %s"%(b,s)
 with open("tomriddle_all_replacements.txt","w",encoding="utf-8") as f:
     f.write("תום רידל - רשימת החלפות (לעיני המפעיל בלבד!)\n"+"="*56+"\n")
-    f.write('המשחק: "בוא נשחק" פותח לוח. בכל תור מקלידים את ספרת המשבצת\n')
-    f.write('ואז רווח, בהמשך שורת "המהלך שלך הוא- " - הלוח הבא מופיע לבד\n')
-    f.write('(את המצב נושא טוקן נסתר בסוף השורה; אין צורך בקודים).\n')
-    f.write('טעית בספרה? Backspace והקלד שוב. בוורד כל לוח הוא טבלה אמיתית;\n')
-    f.write('כאן "/" מפריד בין שורות הלוח לצורך תמצות בלבד.\n'+"="*56+"\n\n")
+    f.write('המשחק: "בוא נשחק" שואל אם לשחק; עונים כן (או יאללה/בטח) ורווח\n')
+    f.write('ולוח נפתח. בכל תור מקלידים את ספרת המשבצת ואז רווח בהמשך שורת\n')
+    f.write('"המהלך שלך הוא- " - הלוח הבא מופיע לבד (את המצב נושא טוקן נסתר\n')
+    f.write('בסוף השורה; אין צורך בקודים). בסוף משחק הוא מציע עוד אחד - שוב\n')
+    f.write('כן/לא. טעית בספרה? Backspace והקלד שוב. בוורד כל לוח הוא טבלה\n')
+    f.write('אמיתית; כאן "/" מפריד בין שורות הלוח לצורך תמצות בלבד.\n'+"="*56+"\n\n")
     f.write("--- א. שיחה ---\n\n")
     for nm,val in CHAT: f.write('"%s"  ->  %s\n\n'%(nm,val))
-    f.write('"בוא נשחק"  ->  [לוח ריק]\n\n')
-    f.write("\n--- ב. משחק (לפי רצף המהלכים שלך עד כה) ---\n\n")
+    f.write("--- ב. שאלות עם המשך (העונה מקליד את התשובה ורווח) ---\n\n")
+    for nm,val,tok in CHAT_Q:
+        f.write('"%s"  ->  %s[טוקן]\n'%(nm,val))
+    f.write('\nתשובות: כן/יאללה/בטח אחרי שאלת משחק -> לוח ריק;\n')
+    for nm,val in QA:
+        vis=nm.split(" ",1)[1]
+        f.write('"%s..."  ->  %s\n'%(vis,val))
+    f.write("\n--- ג. משחק (לפי רצף המהלכים שלך עד כה) ---\n\n")
     for key in GAME_KEYS:
         raw,status=entries[key]
         f.write("%-10s ->  %s\n"%(",".join(key),bl(raw,status)))

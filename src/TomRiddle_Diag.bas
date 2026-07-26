@@ -20,18 +20,12 @@ Private Function U(ByVal codes As String) As String
 End Function
 
 Private Function IsGameName(ByVal nm As String) As Boolean
-    Dim j As Long, c As String
     If Len(nm) < 2 Then Exit Function
     If Left(nm, 3) = U("1514 1514 1514") Then
         IsGameName = True
         Exit Function
     End If
-    If Left(nm, 1) <> U("1509") Then Exit Function
-    For j = 2 To Len(nm)
-        c = Mid(nm, j, 1)
-        If Not (c = " " Or c = U("1509") Or (c >= "0" And c <= "9")) Then Exit Function
-    Next j
-    IsGameName = True
+    IsGameName = (Left(nm, 1) = U("1509"))
 End Function
 
 Public Sub TomRiddle_Diag()
