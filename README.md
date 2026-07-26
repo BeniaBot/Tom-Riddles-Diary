@@ -1,6 +1,6 @@
 <div dir="rtl">
 
-# 🎭 OfficeChat
+# 🎭 היומן של תום רידל
 
 > 🇬🇧 English version: [README.en.md](README.en.md)
 
