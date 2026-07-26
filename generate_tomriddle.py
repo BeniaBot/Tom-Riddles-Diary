@@ -1,11 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Tom Riddle generator - Hebrew-trigger + prank-safe edition.
-Fixes:
- (1) game trigger is HEBREW ("תתת") so it matches in the same AutoCorrect
-     language list as the (working) Hebrew chat triggers.
- (2) chat + board texts NEVER reveal the mechanism (it's a prank on viewers).
- (3) no replacement value contains its own trigger (Word loop-prevention).
+Tom Riddle generator - formatted-entries edition.
+Boards are REAL Word tables (bordered 3x3, colored X/O) stored as FORMATTED
+AutoCorrect entries via AutoCorrect.Entries.AddRichText.  Chat replies are
+formatted entries too.  Why formatted for everything:
+ (1) PERSISTENCE: plain entries added through automation are lost when Word
+     closes (measured on Word 16.0) - even with NormalTemplate.Save.  Formatted
+     entries live in Normal.dotm and survive, provided the installer performs a
+     REAL NormalTemplate.Save (NOT the old `Saved = True` discard-marker, which
+     silently threw away the whole install).
+ (2) FONT-PROOF: a real table needs no monospace font to line up.
+ (3) Formatted entries are global, not per-language, so trigger-language
+     fragility disappears; triggers stay Hebrew for typing ergonomics.
+Chat + board texts NEVER reveal the mechanism (it's a prank on viewers), and
+no replacement value contains its own trigger (Word loop-prevention).
 Code is pure ASCII (Hebrew via ChrW); import the .bas (do not paste).
 """
 import io
@@ -92,19 +100,28 @@ P_LOSE="ניצחתי! משחק טוב.  :)"
 P_DRAW="תיקו! משחק צמוד.  :)"
 P_WIN="ניצחת! כל הכבוד!  :)"
 
-# Light box-drawing frame.  All of these are exactly one cell wide in a
-# monospace font (measured in Consolas: every glyph below is the same advance
-# width as a digit), so the grid lines up.  Heavier/geometric variants such as
-# U+2715 or the emoji marks fall back to a double-width font and break it.
-BOX={
- 'h':0x2500,'v':0x2502,                      # ─ │
- 'tl':0x250C,'tj':0x252C,'tr':0x2510,        # ┌ ┬ ┐
- 'ml':0x251C,'mj':0x253C,'mr':0x2524,        # ├ ┼ ┤
- 'bl':0x2514,'bj':0x2534,'br':0x2518,        # └ ┴ ┘
-}
+# used only for docs/replacements.txt (presenter reference sketch)
+BOX_V=0x2502   # │
 
 PFX_CODES="1514 1514 1514"          # "תתת"  = game trigger prefix (Hebrew)
 PLAY_ALIAS_CODES="1489 1493 1488 32 1504 1513 1495 1511"  # "בוא נשחק" -> opens board
+
+# ===== board table styling (wdColor = R + G*256 + B*65536) =====
+def _rgb(r,g,b): return r + g*256 + b*65536
+C_X=_rgb(192,0,0)        # X: bold dark red
+C_O=_rgb(0,80,192)       # O: bold blue
+C_D=_rgb(150,150,150)    # free-cell digit hints: gray
+# CRASH RULE (measured, Word 16.0): on a WINDOWLESS document, ANY paragraph-
+# alignment write - Range.ParagraphFormat or Styles(...).ParagraphFormat -
+# kills the Word process (RPC 0x800706BE).  Text, Font, table geometry,
+# Cells.VerticalAlignment and TableDirection are all safe.  Therefore the
+# board uses NO horizontal paragraph alignment; instead the cells are made
+# narrow (CELL_W + small padding) so a single glyph sits visually centered.
+CELL_H=26                # row height in points
+CELL_W=20                # column width in points (narrow = pseudo-centering)
+CELL_PAD=2               # left+right cell padding in points
+CELL_FONT=16
+STATUS_FONT=12
 
 # ===== VBA encoding =====
 def clean(s):
@@ -131,70 +148,144 @@ U_FUNC=(
 )
 CHUNK=140
 
+def _status_case(w,indent):
+    for st,txt in (("play",P_PLAY),("lose",P_LOSE),("draw",P_DRAW),("win",P_WIN)):
+        w('%sCase "%s"\n%s    StatusText = U("%s")\n'%(indent,st,indent,codes(txt)))
+
 def build_setup():
     o=io.StringIO(); w=o.write
     w('Attribute VB_Name = "TomRiddle_Setup"\n')
     w("' ===================================================================\n")
     w("'  Tom Riddle - Setup.  IMPORT this file (File > Import File), then F5\n")
     w("'  -> TomRiddle_Install.  Do NOT copy-paste into the code window.\n")
+    w("'  All entries are FORMATTED AutoCorrect entries (AddRichText): boards\n")
+    w("'  are real tables.  They live in Normal.dotm - the installer performs\n")
+    w("'  a REAL NormalTemplate.Save at the end; without it NOTHING persists\n")
+    w("'  after Word closes (plain entries added via automation never persist).\n")
     w("' ===================================================================\n")
     w("Option Explicit\n\n")
+    w("Private tDoc As Document\n")
+    w("Private tTbl As Table\n\n")
     w(U_FUNC); w("\n")
-    w("Private Sub AddPlain(ByVal nm As String, ByVal val As String)\n")
-    w("    On Error Resume Next\n    Application.AutoCorrect.Entries.Add nm, val\n    On Error GoTo 0\nEnd Sub\n\n")
-    w("Private Function CellCh(ByVal raw As String, ByVal i As Long) As String\n")
-    w("    Dim ch As String\n    ch = Mid(raw, i, 1)\n")
-    w("    If ch = \" \" Then\n        CellCh = CStr(i)\n    Else\n        CellCh = ch\n    End If\nEnd Function\n\n")
-    # one grid row:  LRE | x | x | x | PDF   (13 chars, no padding before the frame)
-    w("Private Function GRow(ByVal raw As String, ByVal a As Long, ByVal b As Long, ByVal c As Long) As String\n")
-    w("    Dim v As String\n")
-    w("    v = ChrW(%d)\n"%BOX['v'])
-    w('    GRow = ChrW(8234) & v & " " & CellCh(raw,a) & " " & v & " " & CellCh(raw,b) & " " & v & " " & CellCh(raw,c) & " " & v & ChrW(8236)\n')
-    w("End Function\n\n")
-    # one horizontal rule of the frame
-    w("Private Function GLine(ByVal lft As Long, ByVal jn As Long, ByVal rgt As Long) As String\n")
-    w("    Dim h As String\n")
-    w("    h = ChrW(%d) & ChrW(%d) & ChrW(%d)\n"%(BOX['h'],BOX['h'],BOX['h']))
-    w("    GLine = ChrW(8234) & ChrW(lft) & h & ChrW(jn) & h & ChrW(jn) & h & ChrW(rgt) & ChrW(8236)\n")
-    w("End Function\n\n")
-    w("Private Function BoardText(ByVal raw As String, ByVal status As String) As String\n")
-    w("    Dim s As String, nl As String\n")
-    w("    nl = ChrW(11)\n")     # soft line break (stacks rows, stays one plain entry)
+    w("Private Sub AddRich(ByVal nm As String, ByVal rng As Range)\n")
+    w("    ' delete in a loop: a plain and a rich entry can share the same name\n")
+    w("    Dim t As Long\n")
+    w("    On Error Resume Next\n")
+    w("    For t = 1 To 8\n")
+    w("        Err.Clear\n")
+    w("        Application.AutoCorrect.Entries(nm).Delete\n")
+    w("        If Err.Number <> 0 Then Exit For\n")
+    w("    Next t\n")
+    w("    Err.Clear\n")
+    w("    Application.AutoCorrect.Entries.AddRichText nm, rng\n")
+    w("    On Error GoTo 0\n")
+    w("End Sub\n\n")
+    w("Private Function StatusText(ByVal status As String) As String\n")
     w("    Select Case status\n")
-    w('        Case "play"\n            s = U("%s")\n'%codes(P_PLAY))
-    w('        Case "lose"\n            s = U("%s")\n'%codes(P_LOSE))
-    w('        Case "draw"\n            s = U("%s")\n'%codes(P_DRAW))
-    w('        Case "win"\n            s = U("%s")\n'%codes(P_WIN))
+    _status_case(w,"        ")
     w("    End Select\n")
-    w("    BoardText = GLine(%d, %d, %d) & nl\n"%(BOX['tl'],BOX['tj'],BOX['tr']))
-    w("    BoardText = BoardText & GRow(raw, 1, 2, 3) & nl\n")
-    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
-    w("    BoardText = BoardText & GRow(raw, 4, 5, 6) & nl\n")
-    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
-    w("    BoardText = BoardText & GRow(raw, 7, 8, 9) & nl\n")
-    w("    BoardText = BoardText & GLine(%d, %d, %d) & nl & s & nl\n"%(BOX['bl'],BOX['bj'],BOX['br']))
     w("End Function\n\n")
+    w("Private Sub AddChat(ByVal nm As String, ByVal val As String)\n")
+    w("    Dim r As Range\n")
+    w("    Set r = tDoc.Content\n")
+    w("    r.End = r.End - 1\n")
+    w("    r.Text = val\n")
+    w("    AddRich nm, tDoc.Content\n")
+    w("End Sub\n\n")
+    w("Private Sub BoardDoc()\n")
+    w("    ' NO ParagraphFormat calls here: on a windowless document they\n")
+    w("    ' crash the Word process (see the CRASH RULE in the generator).\n")
+    w("    tDoc.Content.Delete\n")
+    w("    Set tTbl = tDoc.Tables.Add(tDoc.Range(0, 0), 3, 3)\n")
+    w("    tTbl.Borders.InsideLineStyle = 1\n")
+    w("    tTbl.Borders.OutsideLineStyle = 1\n")
+    w("    tTbl.Rows.Alignment = 1\n")
+    w("    tTbl.Rows.HeightRule = 2\n")
+    w("    tTbl.Rows.Height = %d\n"%CELL_H)
+    w("    tTbl.Columns.Width = %d\n"%CELL_W)
+    w("    On Error Resume Next\n")
+    w("    tTbl.LeftPadding = %d\n"%CELL_PAD)
+    w("    tTbl.RightPadding = %d\n"%CELL_PAD)
+    w("    On Error GoTo 0\n")
+    w("    tTbl.Range.Cells.VerticalAlignment = 1\n")
+    w("    tTbl.Range.Font.Size = %d\n"%CELL_FONT)
+    w("    tTbl.TableDirection = 1\n")
+    w("    Dim sr As Range\n")
+    w("    Set sr = tDoc.Paragraphs.Last.Range\n")
+    w("    sr.Font.Bold = True\n")
+    w("    sr.Font.Size = %d\n"%STATUS_FONT)
+    w("End Sub\n\n")
+    w("Private Sub SetCell(ByVal i As Long, ByVal ch As String)\n")
+    w("    Dim r As Range\n")
+    w("    Set r = tTbl.Cell((i - 1) \\ 3 + 1, (i - 1) Mod 3 + 1).Range\n")
+    w("    r.End = r.End - 1\n")
+    w("    r.Text = ch\n")
+    w("    Set r = tTbl.Cell((i - 1) \\ 3 + 1, (i - 1) Mod 3 + 1).Range\n")
+    w('    If ch = "X" Then\n')
+    w("        r.Font.Bold = True\n")
+    w("        r.Font.Color = %d\n"%C_X)
+    w('    ElseIf ch = "O" Then\n')
+    w("        r.Font.Bold = True\n")
+    w("        r.Font.Color = %d\n"%C_O)
+    w("    Else\n")
+    w("        r.Font.Bold = False\n")
+    w("        r.Font.Color = %d\n"%C_D)
+    w("    End If\n")
+    w("End Sub\n\n")
+    w("Private Sub SetBoard(ByVal raw As String, ByVal status As String)\n")
+    w("    Dim i As Long, ch As String, sr As Range\n")
+    w("    Set tTbl = tDoc.Tables(1)   ' re-fetch: table pointers can go stale\n")
+    w("    For i = 1 To 9\n")
+    w("        ch = Mid(raw, i, 1)\n")
+    w('        If ch = " " Then ch = CStr(i)\n')
+    w("        SetCell i, ch\n")
+    w("    Next i\n")
+    w("    Set sr = tDoc.Paragraphs.Last.Range\n")
+    w("    sr.End = sr.End - 1\n")
+    w("    sr.Text = StatusText(status)\n")
+    w("End Sub\n\n")
     w("Private Sub G(ByVal key As String, ByVal raw As String, ByVal status As String)\n")
-    w('    AddPlain U("%s") & key, BoardText(raw, status)\n'%PFX_CODES)
+    w("    SetBoard raw, status\n")
+    w('    AddRich U("%s") & key, tDoc.Content\n'%PFX_CODES)
     w("End Sub\n\n")
 
     keys=sorted(entries.keys(), key=lambda k:(len(k),k))
     chunks=[keys[i:i+CHUNK] for i in range(0,len(keys),CHUNK)]
 
     w("Public Sub TomRiddle_Install()\n")
+    w("    ' NOTE: do NOT set ScreenUpdating = False - combined with an\n")
+    w("    ' invisible document it reproducibly crashes Word (RPC failure).\n")
+    w("    Set tDoc = Documents.Add(Visible:=False)\n")
     w("    InstallChat\n")
+    w("    BoardDoc\n")
     for idx in range(len(chunks)): w("    InstallGame%d\n"%(idx+1))
-    w('    MsgBox U("%s") & vbCr & U("%s"), vbInformation, "Tom Riddle"\n'
-      %(codes("תום רידל מוכן!  :)"),codes('נסה בוורד:  היי צאט')))
+    w("    InstallAlias\n")
+    w("    tDoc.Saved = True\n")
+    w("    tDoc.Close 0\n")
+    w("    Set tDoc = Nothing\n")
+    w("    Dim i As Long, n As Long, p3 As String\n")
+    w('    p3 = U("%s")\n'%PFX_CODES)
+    w("    For i = 1 To Application.AutoCorrect.Entries.Count\n")
+    w("        If Left(Application.AutoCorrect.Entries(i).Name, 3) = p3 Then n = n + 1\n")
+    w("    Next i\n")
+    w("    ' REAL save - this is what makes the install survive Word closing\n")
+    w("    On Error Resume Next\n")
+    w("    NormalTemplate.Save\n")
+    w("    On Error GoTo 0\n")
+    w('    MsgBox U("%s") & n & U("%s") & vbCr & U("%s"), vbInformation, "Tom Riddle"\n'
+      %(codes("תום רידל מוכן! נשמרו "),codes(" לוחות משחק.  :)"),codes("נסה בוורד:  היי צאט")))
     w("End Sub\n\n")
-
     w("Private Sub InstallChat()\n")
+    w("    ' no alignment set: the template default paragraph (RTL Hebrew\n")
+    w("    ' profile) is already right-aligned, and ParagraphFormat writes\n")
+    w("    ' crash a windowless document anyway\n")
     for nm,val in CHAT:
-        w("    AddPlain %s, %s & vbCr\n"%(vstr(nm),vstr(val)))
-    # "בוא נשחק" opens the empty board (smooth demo opener)
-    w('    AddPlain U("%s"), BoardText("         ", "play")\n'%PLAY_ALIAS_CODES)
+        w("    AddChat %s, %s\n"%(vstr(nm),vstr(val)))
     w("End Sub\n\n")
-
+    w("Private Sub InstallAlias()\n")
+    w('    SetBoard "         ", "play"\n')
+    w('    AddRich U("%s"), tDoc.Content\n'%PLAY_ALIAS_CODES)
+    w("End Sub\n\n")
     for idx,ch in enumerate(chunks):
         w("Private Sub InstallGame%d()\n"%(idx+1))
         for key in ch:
@@ -210,7 +301,16 @@ def build_remove():
     w("Option Explicit\n\n")
     w(U_FUNC); w("\n")
     w("Private Sub DelE(ByVal nm As String)\n")
-    w("    On Error Resume Next\n    Application.AutoCorrect.Entries(nm).Delete\n    On Error GoTo 0\nEnd Sub\n\n")
+    w("    ' delete in a loop: a plain and a rich entry can share the same name\n")
+    w("    Dim t As Long\n")
+    w("    On Error Resume Next\n")
+    w("    For t = 1 To 8\n")
+    w("        Err.Clear\n")
+    w("        Application.AutoCorrect.Entries(nm).Delete\n")
+    w("        If Err.Number <> 0 Then Exit For\n")
+    w("    Next t\n")
+    w("    On Error GoTo 0\n")
+    w("End Sub\n\n")
     keys=sorted(entries.keys(), key=lambda k:(len(k),k))
     chunks=[keys[i:i+CHUNK] for i in range(0,len(keys),CHUNK)]
     w("Public Sub TomRiddle_Uninstall()\n")
@@ -224,6 +324,10 @@ def build_remove():
     w("        If Left(Application.AutoCorrect.Entries(i).Name, 3) = p3 Then\n")
     w("            Application.AutoCorrect.Entries(i).Delete\n        End If\n    Next i\n")
     w("    after = Application.AutoCorrect.Entries.Count\n")
+    w("    ' REAL save - deletions of formatted entries live in Normal.dotm\n")
+    w("    On Error Resume Next\n")
+    w("    NormalTemplate.Save\n")
+    w("    On Error GoTo 0\n")
     w('    MsgBox U("%s") & vbCr & U("%s") & (before - after) & U("%s"), vbInformation, "Tom Riddle"\n'
       %(codes("תום רידל הוסר."),codes("נמחקו "),codes(" החלפות. וורד חזר לקדמותו.")))
     w("End Sub\n\n")
@@ -249,8 +353,8 @@ def build_diag():
     w('    v = "(NOT FOUND)"\n    On Error Resume Next\n')
     w('    Set e = Application.AutoCorrect.Entries(U("%s"))\n'%PFX_CODES)
     w("    On Error GoTo 0\n")
-    w("    If Not e Is Nothing Then v = e.Value\n")
-    w('    msg = msg & "Game entry value:" & vbCrLf & v\n')
+    w('    If Not e Is Nothing Then v = "exists, RichText=" & e.RichText\n')
+    w('    msg = msg & "Game entry: " & v\n')
     w('    MsgBox msg, vbInformation, "Tom Riddle Diagnostics"\n')
     w("End Sub\n")
     return o.getvalue()
@@ -259,52 +363,146 @@ def build_vbs(install=True):
     o=io.StringIO(); w=o.write
     name = "Install" if install else "Uninstall"
     w("' %s-TomRiddle.vbs  -  double-click to %s (no VBA editor needed).\n"%(name, name.lower()))
+    if install:
+        w("' Boards are REAL Word tables stored as formatted AutoCorrect entries\n")
+        w("' (AddRichText -> Normal.dotm).  Expect the install to take a minute or\n")
+        w("' two; a completion popup reports how many boards were saved.\n")
     w("Option Explicit\n")
-    w("Dim word, createdWord\n")
+    w("Dim word, createdWord, tDoc, tTbl\n")
     w("Function U(codes)\n    Dim parts, i, s\n    s = \"\"\n")
     w("    If Len(codes) = 0 Then\n        U = \"\"\n        Exit Function\n    End If\n")
     w("    parts = Split(codes, \" \")\n    For i = 0 To UBound(parts)\n")
     w("        If Len(parts(i)) > 0 Then s = s & ChrW(CLng(parts(i)))\n    Next\n    U = s\nEnd Function\n")
+    w("Sub Announce(msg)\n")
+    w("    If InStr(1, LCase(WScript.FullName), \"cscript\") > 0 Then\n")
+    w("        WScript.Echo msg\n")
+    w("    Else\n")
+    w("        MsgBox msg, 64, \"Tom Riddle\"\n")
+    w("    End If\n")
+    w("End Sub\n")
     w("On Error Resume Next\nSet word = GetObject(, \"Word.Application\")\n")
     w("If word Is Nothing Then\n    Set word = CreateObject(\"Word.Application\")\n    createdWord = True\nEnd If\n")
     w("On Error GoTo 0\n")
     w("If word Is Nothing Then\n    MsgBox \"Microsoft Word not found.\", 16, \"Tom Riddle\"\n    WScript.Quit\nEnd If\n")
     w("If createdWord Then word.Visible = False\n")
     if install:
-        w("Function CellCh(raw, i)\n    Dim ch\n    ch = Mid(raw, i, 1)\n")
-        w("    If ch = \" \" Then\n        CellCh = CStr(i)\n    Else\n        CellCh = ch\n    End If\nEnd Function\n")
-        w("Function GRow(raw, a, b, c)\n    Dim v\n    v = ChrW(%d)\n"%BOX['v'])
-        w('    GRow = ChrW(8234) & v & " " & CellCh(raw,a) & " " & v & " " & CellCh(raw,b) & " " & v & " " & CellCh(raw,c) & " " & v & ChrW(8236)\n')
-        w("End Function\n")
-        w("Function GLine(lft, jn, rgt)\n    Dim h\n")
-        w("    h = ChrW(%d) & ChrW(%d) & ChrW(%d)\n"%(BOX['h'],BOX['h'],BOX['h']))
-        w("    GLine = ChrW(8234) & ChrW(lft) & h & ChrW(jn) & h & ChrW(jn) & h & ChrW(rgt) & ChrW(8236)\n")
-        w("End Function\n")
-        w("Function BoardText(raw, status)\n    Dim s, nl\n")
-        w("    nl = ChrW(11)\n")
+        w("Sub AddRich(nm, rng)\n")
+        w("    ' delete in a loop: a plain and a rich entry can share the same name\n")
+        w("    Dim t\n")
+        w("    On Error Resume Next\n")
+        w("    For t = 1 To 8\n")
+        w("        Err.Clear\n")
+        w("        word.AutoCorrect.Entries(nm).Delete\n")
+        w("        If Err.Number <> 0 Then Exit For\n")
+        w("    Next\n")
+        w("    Err.Clear\n")
+        w("    word.AutoCorrect.Entries.AddRichText nm, rng\n")
+        w("    On Error GoTo 0\n")
+        w("End Sub\n")
+        w("Function StatusText(status)\n")
         w("    Select Case status\n")
-        w('        Case "play"\n            s = U("%s")\n'%codes(P_PLAY))
-        w('        Case "lose"\n            s = U("%s")\n'%codes(P_LOSE))
-        w('        Case "draw"\n            s = U("%s")\n'%codes(P_DRAW))
-        w('        Case "win"\n            s = U("%s")\n'%codes(P_WIN))
+        for st,txt in (("play",P_PLAY),("lose",P_LOSE),("draw",P_DRAW),("win",P_WIN)):
+            w('        Case "%s"\n            StatusText = U("%s")\n'%(st,codes(txt)))
         w("    End Select\n")
-        w("    BoardText = GLine(%d, %d, %d) & nl\n"%(BOX['tl'],BOX['tj'],BOX['tr']))
-        w("    BoardText = BoardText & GRow(raw, 1, 2, 3) & nl\n")
-        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
-        w("    BoardText = BoardText & GRow(raw, 4, 5, 6) & nl\n")
-        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl\n"%(BOX['ml'],BOX['mj'],BOX['mr']))
-        w("    BoardText = BoardText & GRow(raw, 7, 8, 9) & nl\n")
-        w("    BoardText = BoardText & GLine(%d, %d, %d) & nl & s & nl\nEnd Function\n"%(BOX['bl'],BOX['bj'],BOX['br']))
-        w("Sub AddP(nm, val)\n    On Error Resume Next\n    word.AutoCorrect.Entries.Add nm, val\n    On Error GoTo 0\nEnd Sub\n")
-        w("Sub AddG(key, raw, status)\n    AddP U(\"%s\") & key, BoardText(raw, status)\nEnd Sub\n"%PFX_CODES)
-        for nm,val in CHAT: w("AddP %s, %s & vbCr\n"%(vstr(nm),vstr(val)))
-        w('AddP U("%s"), BoardText("         ", "play")\n'%PLAY_ALIAS_CODES)
+        w("End Function\n")
+        w("Sub AddChat(nm, val)\n")
+        w("    Dim r\n")
+        w("    Set r = tDoc.Content\n")
+        w("    r.End = r.End - 1\n")
+        w("    r.Text = val\n")
+        w("    AddRich nm, tDoc.Content\n")
+        w("End Sub\n")
+        w("Sub BoardDoc()\n")
+        w("    ' NO ParagraphFormat calls: they crash Word on a windowless doc\n")
+        w("    tDoc.Content.Delete\n")
+        w("    Set tTbl = tDoc.Tables.Add(tDoc.Range(0, 0), 3, 3)\n")
+        w("    tTbl.Borders.InsideLineStyle = 1\n")
+        w("    tTbl.Borders.OutsideLineStyle = 1\n")
+        w("    tTbl.Rows.Alignment = 1\n")
+        w("    tTbl.Rows.HeightRule = 2\n")
+        w("    tTbl.Rows.Height = %d\n"%CELL_H)
+        w("    tTbl.Columns.Width = %d\n"%CELL_W)
+        w("    On Error Resume Next\n")
+        w("    tTbl.LeftPadding = %d\n"%CELL_PAD)
+        w("    tTbl.RightPadding = %d\n"%CELL_PAD)
+        w("    On Error GoTo 0\n")
+        w("    tTbl.Range.Cells.VerticalAlignment = 1\n")
+        w("    tTbl.Range.Font.Size = %d\n"%CELL_FONT)
+        w("    tTbl.TableDirection = 1\n")
+        w("    Dim sr\n")
+        w("    Set sr = tDoc.Paragraphs.Last.Range\n")
+        w("    sr.Font.Bold = True\n")
+        w("    sr.Font.Size = %d\n"%STATUS_FONT)
+        w("End Sub\n")
+        w("Sub SetCell(i, ch)\n")
+        w("    Dim r\n")
+        w("    Set r = tTbl.Cell((i - 1) \\ 3 + 1, (i - 1) Mod 3 + 1).Range\n")
+        w("    r.End = r.End - 1\n")
+        w("    r.Text = ch\n")
+        w("    Set r = tTbl.Cell((i - 1) \\ 3 + 1, (i - 1) Mod 3 + 1).Range\n")
+        w('    If ch = "X" Then\n')
+        w("        r.Font.Bold = True\n")
+        w("        r.Font.Color = %d\n"%C_X)
+        w('    ElseIf ch = "O" Then\n')
+        w("        r.Font.Bold = True\n")
+        w("        r.Font.Color = %d\n"%C_O)
+        w("    Else\n")
+        w("        r.Font.Bold = False\n")
+        w("        r.Font.Color = %d\n"%C_D)
+        w("    End If\n")
+        w("End Sub\n")
+        w("Sub SetBoard(raw, status)\n")
+        w("    Dim i, ch, sr\n")
+        w("    Set tTbl = tDoc.Tables(1)   ' re-fetch: table pointers can go stale\n")
+        w("    For i = 1 To 9\n")
+        w("        ch = Mid(raw, i, 1)\n")
+        w('        If ch = " " Then ch = CStr(i)\n')
+        w("        SetCell i, ch\n")
+        w("    Next\n")
+        w("    Set sr = tDoc.Paragraphs.Last.Range\n")
+        w("    sr.End = sr.End - 1\n")
+        w("    sr.Text = StatusText(status)\n")
+        w("End Sub\n")
+        w("Sub AddG(key, raw, status)\n")
+        w("    SetBoard raw, status\n")
+        w("    AddRich U(\"%s\") & key, tDoc.Content\n"%PFX_CODES)
+        w("End Sub\n")
+        w('Announce U("%s")\n'%codes("מתקין את תום רידל... זה אורך כדקה. המתן להודעת הסיום."))
+        w("' invisible work document (Visible:=False): the user cannot close it\n")
+        w("' mid-install even when we attach to their open Word instance.\n")
+        w("' NOTE: no ScreenUpdating=False here - combined with a windowless\n")
+        w("' document it reproducibly CRASHES Word (RPC 0x800706BE).\n")
+        w("Set tDoc = word.Documents.Add(word.NormalTemplate.FullName, False, 0, False)\n")
+        w("' no alignment set: template default (RTL profile) is already right-\n")
+        w("' aligned, and ParagraphFormat writes crash a windowless document\n")
+        for nm,val in CHAT: w("AddChat %s, %s\n"%(vstr(nm),vstr(val)))
+        w("BoardDoc\n")
         for key in sorted(entries.keys(), key=lambda k:(len(k),k)):
             raw,status=entries[key]; w('AddG "%s", "%s", "%s"\n'%(key,raw,status))
-        w("If createdWord Then\n    word.NormalTemplate.Saved = True\n    word.Quit\nEnd If\n")
-        w('MsgBox U("%s") & vbCr & U("%s"), 64, "Tom Riddle"\n'%(codes("תום רידל מוכן!  :)"),codes("נסה בוורד:  היי צאט")))
+        w('SetBoard "         ", "play"\n')
+        w('AddRich U("%s"), tDoc.Content\n'%PLAY_ALIAS_CODES)
+        w("tDoc.Saved = True\ntDoc.Close 0\nSet tDoc = Nothing\n")
+        w("Dim i2, n, p3\nn = 0\np3 = U(\"%s\")\n"%PFX_CODES)
+        w("For i2 = 1 To word.AutoCorrect.Entries.Count\n")
+        w("    If Left(word.AutoCorrect.Entries(i2).Name, 3) = p3 Then n = n + 1\nNext\n")
+        w("' REAL save - without it the whole install vanishes when Word closes\n")
+        w("Dim saveNote\nsaveNote = \"\"\nOn Error Resume Next\nword.NormalTemplate.Save\n")
+        w("If Err.Number <> 0 Then saveNote = \" [!] \" & Err.Description\nErr.Clear\nOn Error GoTo 0\n")
+        w("If createdWord Then word.Quit\n")
+        w('Announce U("%s") & n & U("%s") & saveNote\n'
+          %(codes("תום רידל מוכן! נשמרו "),codes(" לוחות. נסה בוורד:  היי צאט")))
     else:
-        w("Sub DelE(nm)\n    On Error Resume Next\n    word.AutoCorrect.Entries(nm).Delete\n    On Error GoTo 0\nEnd Sub\n")
+        w("Sub DelE(nm)\n")
+        w("    ' delete in a loop: a plain and a rich entry can share the same name\n")
+        w("    Dim t\n")
+        w("    On Error Resume Next\n")
+        w("    For t = 1 To 8\n")
+        w("        Err.Clear\n")
+        w("        word.AutoCorrect.Entries(nm).Delete\n")
+        w("        If Err.Number <> 0 Then Exit For\n")
+        w("    Next\n")
+        w("    On Error GoTo 0\n")
+        w("End Sub\n")
         for nm,_ in CHAT: w("DelE %s\n"%vstr(nm))
         w('DelE U("%s")\n'%PLAY_ALIAS_CODES)
         for key in sorted(entries.keys(), key=lambda k:(len(k),k)):
@@ -312,8 +510,10 @@ def build_vbs(install=True):
         w("Dim i, p3\np3 = U(\"%s\")\n"%PFX_CODES)
         w("For i = word.AutoCorrect.Entries.Count To 1 Step -1\n")
         w("    If Left(word.AutoCorrect.Entries(i).Name, 3) = p3 Then\n        word.AutoCorrect.Entries(i).Delete\n    End If\nNext\n")
-        w("If createdWord Then\n    word.NormalTemplate.Saved = True\n    word.Quit\nEnd If\n")
-        w('MsgBox U("%s"), 64, "Tom Riddle"\n'%codes("תום רידל הוסר. וורד חזר לקדמותו."))
+        w("' REAL save - deletions of formatted entries live in Normal.dotm\n")
+        w("On Error Resume Next\nword.NormalTemplate.Save\nOn Error GoTo 0\n")
+        w("If createdWord Then word.Quit\n")
+        w('Announce U("%s")\n'%codes("תום רידל הוסר. וורד חזר לקדמותו."))
     return o.getvalue()
 
 setup=build_setup(); remove=build_remove(); diag=build_diag()
@@ -327,7 +527,7 @@ open("Uninstall-TomRiddle.vbs","w",encoding="ascii").write(build_vbs(False))
 def cell(raw,i):
     ch=raw[i-1]; return str(i) if ch==' ' else ch
 def bl(raw,status):
-    v=chr(BOX['v'])
+    v=chr(BOX_V)
     b=" / ".join("%s%s%s%s%s%s%s"%(v,cell(raw,i),v,cell(raw,i+1),v,cell(raw,i+2),v)
                  for i in (1,4,7))
     s={'play':P_PLAY,'lose':P_LOSE,'draw':P_DRAW,'win':P_WIN}[status]
@@ -335,7 +535,8 @@ def bl(raw,status):
 with open("tomriddle_all_replacements.txt","w",encoding="utf-8") as f:
     f.write("תום רידל - רשימת החלפות (לעיני המפעיל בלבד!)\n"+"="*56+"\n")
     f.write('טריגר המשחק: "תתת" + ספרות (למשל תתת, תתת5, תתת59...).\n')
-    f.write('"בוא נשחק" פותח לוח ריק. "/" = מעבר שורה בלוח.\n'+"="*56+"\n\n")
+    f.write('"בוא נשחק" פותח לוח ריק. בוורד כל לוח הוא טבלה אמיתית;\n')
+    f.write('כאן "/" מפריד בין שורות הלוח לצורך תמצות בלבד.\n'+"="*56+"\n\n")
     f.write("--- א. שיחה ---\n\n")
     for nm,val in CHAT: f.write('"%s"  ->  %s\n\n'%(nm,val))
     f.write('"בוא נשחק"  ->  [לוח ריק]\n\n')

@@ -1,6 +1,6 @@
 ' Uninstall-TomRiddle.vbs  -  double-click to uninstall (no VBA editor needed).
 Option Explicit
-Dim word, createdWord
+Dim word, createdWord, tDoc, tTbl
 Function U(codes)
     Dim parts, i, s
     s = ""
@@ -14,6 +14,13 @@ Function U(codes)
     Next
     U = s
 End Function
+Sub Announce(msg)
+    If InStr(1, LCase(WScript.FullName), "cscript") > 0 Then
+        WScript.Echo msg
+    Else
+        MsgBox msg, 64, "Tom Riddle"
+    End If
+End Sub
 On Error Resume Next
 Set word = GetObject(, "Word.Application")
 If word Is Nothing Then
@@ -27,8 +34,14 @@ If word Is Nothing Then
 End If
 If createdWord Then word.Visible = False
 Sub DelE(nm)
+    ' delete in a loop: a plain and a rich entry can share the same name
+    Dim t
     On Error Resume Next
-    word.AutoCorrect.Entries(nm).Delete
+    For t = 1 To 8
+        Err.Clear
+        word.AutoCorrect.Entries(nm).Delete
+        If Err.Number <> 0 Then Exit For
+    Next
     On Error GoTo 0
 End Sub
 DelE U("1492 1497 1497 32 1510 1488 1496")
@@ -1182,8 +1195,9 @@ For i = word.AutoCorrect.Entries.Count To 1 Step -1
         word.AutoCorrect.Entries(i).Delete
     End If
 Next
-If createdWord Then
-    word.NormalTemplate.Saved = True
-    word.Quit
-End If
-MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1492 1493 1505 1512 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), 64, "Tom Riddle"
+' REAL save - deletions of formatted entries live in Normal.dotm
+On Error Resume Next
+word.NormalTemplate.Save
+On Error GoTo 0
+If createdWord Then word.Quit
+Announce U("1514 1493 1501 32 1512 1497 1491 1500 32 1492 1493 1505 1512 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46")

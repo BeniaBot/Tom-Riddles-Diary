@@ -122,9 +122,10 @@ automatically.
 ## ⚠️ Notes
 
 - Tom Riddle only edits your **AutoCorrect** entries; the uninstaller reverts them.
-- **Set the document to Consolas** (or another monospace font). The board frame only
-  lines up in a monospace font; in Calibri — Word's default — the frame glyphs are a
-  different width from the digits and the grid breaks.
+- **Boards are real Word tables** (formatted AutoCorrect entries) — red X, blue O,
+  real borders. Looks great in any font; no document setup needed.
+- Install takes **~2-3 minutes** (1,120 tables get registered) and ends with a popup
+  reporting how many boards were saved. Uninstall is fast.
 - This is a toy/prank. Use it to have fun. 🙂
 
 ## 📄 License

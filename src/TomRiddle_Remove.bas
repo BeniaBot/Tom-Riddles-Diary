@@ -21,8 +21,14 @@ Private Function U(ByVal codes As String) As String
 End Function
 
 Private Sub DelE(ByVal nm As String)
+    ' delete in a loop: a plain and a rich entry can share the same name
+    Dim t As Long
     On Error Resume Next
-    Application.AutoCorrect.Entries(nm).Delete
+    For t = 1 To 8
+        Err.Clear
+        Application.AutoCorrect.Entries(nm).Delete
+        If Err.Number <> 0 Then Exit For
+    Next t
     On Error GoTo 0
 End Sub
 
@@ -47,6 +53,10 @@ Public Sub TomRiddle_Uninstall()
         End If
     Next i
     after = Application.AutoCorrect.Entries.Count
+    ' REAL save - deletions of formatted entries live in Normal.dotm
+    On Error Resume Next
+    NormalTemplate.Save
+    On Error GoTo 0
     MsgBox U("1514 1493 1501 32 1512 1497 1491 1500 32 1492 1493 1505 1512 46") & vbCr & U("1504 1502 1495 1511 1493 32") & (before - after) & U("32 1492 1495 1500 1508 1493 1514 46 32 1493 1493 1512 1491 32 1495 1494 1512 32 1500 1511 1491 1502 1493 1514 1493 46"), vbInformation, "Tom Riddle"
 End Sub
 

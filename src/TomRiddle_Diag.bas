@@ -27,7 +27,7 @@ Public Sub TomRiddle_Diag()
     On Error Resume Next
     Set e = Application.AutoCorrect.Entries(U("1514 1514 1514"))
     On Error GoTo 0
-    If Not e Is Nothing Then v = e.Value
-    msg = msg & "Game entry value:" & vbCrLf & v
+    If Not e Is Nothing Then v = "exists, RichText=" & e.RichText
+    msg = msg & "Game entry: " & v
     MsgBox msg, vbInformation, "Tom Riddle Diagnostics"
 End Sub
