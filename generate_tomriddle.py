@@ -94,6 +94,13 @@ def _strip_prefix_conflicts(chat):
     return [(nm,v) for nm,v in chat if nm not in drop], drop
 CHAT,_DROPPED=_strip_prefix_conflicts(CHAT)
 
+# display name for user-facing Hebrew messages (NOT for code identifiers)
+NAME_HE="היומן של תום רידל"
+# MsgBox flags: vbMsgBoxRtlReading (1048576) + vbMsgBoxRight (524288) make the
+# Hebrew message render RTL with correct punctuation order.
+MB_RTL=1048576+524288
+MB_INFO=64+MB_RTL
+
 # board prompts: prank-safe, contain NO trigger text
 P_PLAY="תורך!  :)"
 P_LOSE="ניצחתי! משחק טוב.  :)"
@@ -253,6 +260,8 @@ def build_setup():
     chunks=[keys[i:i+CHUNK] for i in range(0,len(keys),CHUNK)]
 
     w("Public Sub TomRiddle_Install()\n")
+    w('    MsgBox U("%s"), %d, U("%s")\n'
+      %(codes("מתקין את "+NAME_HE+"... ההתקנה אורכת 2-3 דקות. לא לסגור את וורד עד הודעת הסיום."),MB_INFO,codes(NAME_HE)))
     w("    ' NOTE: do NOT set ScreenUpdating = False - combined with an\n")
     w("    ' invisible document it reproducibly crashes Word (RPC failure).\n")
     w("    Set tDoc = Documents.Add(Visible:=False)\n")
@@ -272,8 +281,8 @@ def build_setup():
     w("    On Error Resume Next\n")
     w("    NormalTemplate.Save\n")
     w("    On Error GoTo 0\n")
-    w('    MsgBox U("%s") & n & U("%s") & vbCr & U("%s"), vbInformation, "Tom Riddle"\n'
-      %(codes("תום רידל מוכן! נשמרו "),codes(" לוחות משחק.  :)"),codes("נסה בוורד:  היי צאט")))
+    w('    MsgBox U("%s") & n & U("%s") & vbCr & U("%s"), %d, U("%s")\n'
+      %(codes(NAME_HE+" מוכן! נשמרו "),codes(" לוחות משחק.  :)"),codes("נסה בוורד:  היי צאט"),MB_INFO,codes(NAME_HE)))
     w("End Sub\n\n")
     w("Private Sub InstallChat()\n")
     w("    ' no alignment set: the template default paragraph (RTL Hebrew\n")
@@ -328,8 +337,8 @@ def build_remove():
     w("    On Error Resume Next\n")
     w("    NormalTemplate.Save\n")
     w("    On Error GoTo 0\n")
-    w('    MsgBox U("%s") & vbCr & U("%s") & (before - after) & U("%s"), vbInformation, "Tom Riddle"\n'
-      %(codes("תום רידל הוסר."),codes("נמחקו "),codes(" החלפות. וורד חזר לקדמותו.")))
+    w('    MsgBox U("%s") & vbCr & U("%s") & (before - after) & U("%s"), %d, U("%s")\n'
+      %(codes(NAME_HE+" הוסר."),codes("נמחקו "),codes(" החלפות. וורד חזר לקדמותו."),MB_INFO,codes(NAME_HE)))
     w("End Sub\n\n")
     w("Private Sub RemoveChat()\n")
     for nm,_ in CHAT: w("    DelE %s\n"%vstr(nm))
@@ -377,7 +386,8 @@ def build_vbs(install=True):
     w("    If InStr(1, LCase(WScript.FullName), \"cscript\") > 0 Then\n")
     w("        WScript.Echo msg\n")
     w("    Else\n")
-    w("        MsgBox msg, 64, \"Tom Riddle\"\n")
+    w("        ' %d = vbInformation + vbMsgBoxRtlReading + vbMsgBoxRight\n"%MB_INFO)
+    w('        MsgBox msg, %d, U("%s")\n'%(MB_INFO,codes(NAME_HE)))
     w("    End If\n")
     w("End Sub\n")
     w("On Error Resume Next\nSet word = GetObject(, \"Word.Application\")\n")
@@ -467,7 +477,7 @@ def build_vbs(install=True):
         w("    SetBoard raw, status\n")
         w("    AddRich U(\"%s\") & key, tDoc.Content\n"%PFX_CODES)
         w("End Sub\n")
-        w('Announce U("%s")\n'%codes("מתקין את תום רידל... זה אורך כדקה. המתן להודעת הסיום."))
+        w('Announce U("%s")\n'%codes("מתקין את "+NAME_HE+"... ההתקנה אורכת 2-3 דקות. אם וורד פתוח - אל תסגור אותו עד הודעת הסיום."))
         w("' invisible work document (Visible:=False): the user cannot close it\n")
         w("' mid-install even when we attach to their open Word instance.\n")
         w("' NOTE: no ScreenUpdating=False here - combined with a windowless\n")
@@ -490,7 +500,7 @@ def build_vbs(install=True):
         w("If Err.Number <> 0 Then saveNote = \" [!] \" & Err.Description\nErr.Clear\nOn Error GoTo 0\n")
         w("If createdWord Then word.Quit\n")
         w('Announce U("%s") & n & U("%s") & saveNote\n'
-          %(codes("תום רידל מוכן! נשמרו "),codes(" לוחות. נסה בוורד:  היי צאט")))
+          %(codes(NAME_HE+" מוכן! נשמרו "),codes(" לוחות. נסה בוורד:  היי צאט")))
     else:
         w("Sub DelE(nm)\n")
         w("    ' delete in a loop: a plain and a rich entry can share the same name\n")
@@ -503,6 +513,7 @@ def build_vbs(install=True):
         w("    Next\n")
         w("    On Error GoTo 0\n")
         w("End Sub\n")
+        w('Announce U("%s")\n'%codes("מסיר את "+NAME_HE+"... זה לוקח פחות מדקה."))
         for nm,_ in CHAT: w("DelE %s\n"%vstr(nm))
         w('DelE U("%s")\n'%PLAY_ALIAS_CODES)
         for key in sorted(entries.keys(), key=lambda k:(len(k),k)):
@@ -513,7 +524,7 @@ def build_vbs(install=True):
         w("' REAL save - deletions of formatted entries live in Normal.dotm\n")
         w("On Error Resume Next\nword.NormalTemplate.Save\nOn Error GoTo 0\n")
         w("If createdWord Then word.Quit\n")
-        w('Announce U("%s")\n'%codes("תום רידל הוסר. וורד חזר לקדמותו."))
+        w('Announce U("%s")\n'%codes(NAME_HE+" הוסר. וורד חזר לקדמותו."))
     return o.getvalue()
 
 setup=build_setup(); remove=build_remove(); diag=build_diag()
